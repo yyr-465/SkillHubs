@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, FileText, FolderOpen, Globe, Loader2, Pencil, Calendar, History, Bot, User } from "lucide-react";
+import { ArrowLeft, FileText, FolderOpen, Globe, Loader2, Pencil, Calendar, History, Bot, User, Play } from "lucide-react";
 import { useSkillStore } from "@/store/skillStore";
 import { useTranslation } from "@/i18n";
 import CategoryBadge from "@/components/CategoryBadge";
@@ -10,6 +10,7 @@ import SkillIcon from "@/components/SkillIcon";
 import SkillEditor from "@/components/SkillEditor";
 import TagBadge from "@/components/TagBadge";
 import TagManager from "@/components/TagManager";
+import ExecutionPanel from "@/components/ExecutionPanel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -21,6 +22,7 @@ export default function SkillDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [showTagManager, setShowTagManager] = useState(false);
+  const [showExecutionPanel, setShowExecutionPanel] = useState(false);
   const {
     selectedSkill: skill,
     isLoading,
@@ -45,6 +47,8 @@ export default function SkillDetail() {
     createTag,
     categorizationHistory,
     fetchCategorizationHistory,
+    prepareExecution,
+    resetExecution,
   } = useSkillStore();
 
   useEffect(() => {
@@ -72,6 +76,11 @@ export default function SkillDetail() {
   const sourceLabel = skill.source === "agentic-awesome" ? t("skillDetail.agenticAwesome") : t("skillDetail.codexSystem");
   const handleCategoryClick = () => { if (skill.category) { navigate("/skills?category=" + encodeURIComponent(skill.category)); } };
   const handleRiskClick = () => { if (skill.risk) { navigate("/skills?risk=" + encodeURIComponent(skill.risk)); } };
+  const handleExecute = () => {
+    resetExecution();
+    setShowExecutionPanel(true);
+    void prepareExecution(skill.id);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,6 +95,7 @@ export default function SkillDetail() {
                   <h1 className="text-xl font-semibold">{skill.name}</h1>
                   <FavoriteButton skillId={skill.id} favorite={skill.favorite} size="md" />
                   <button onClick={() => openEditDialog(skill)} className="rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("skillList.edit")}><Pencil className="h-4 w-4" /></button>
+                  <button onClick={handleExecute} className="rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("skillDetail.execute")}><Play className="h-4 w-4" /></button>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-[--color-muted-foreground]">{skill.description || t("skillDetail.noDescription")}</p>
               </div>
@@ -201,6 +211,9 @@ export default function SkillDetail() {
           onDeleteTag={async (tagId) => { await deleteTag(tagId); }}
           onClose={() => setShowTagManager(false)}
         />
+      )}
+      {showExecutionPanel && (
+        <ExecutionPanel skillId={skill.id} onClose={() => setShowExecutionPanel(false)} />
       )}
     </div>
   );

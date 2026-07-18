@@ -4,7 +4,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { useSkillStore } from "@/store/skillStore";
 import { Check, Download, Key, Upload, Loader2 } from "lucide-react";
 import { THEME_PRESETS, normalizeHex } from "@/lib/theme";
-import { checkForUpdate, getCurrentVersion } from "@/lib/updates";
+import { checkForUpdate, downloadUpdate, getCurrentVersion, installUpdate, type UpdateState } from "@/lib/updates";
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -12,9 +12,11 @@ export default function Settings() {
     settings,
     loaded,
     savedMessage,
+    themeError,
     loadSettings,
     updateSetting,
     saveSettings,
+    cancelThemeChanges,
     clearSavedMessage,
   } = useSettingsStore();
   const { exportSkillsToJson, importSkillsFromJson, fetchStats } = useSkillStore();
@@ -25,6 +27,8 @@ export default function Settings() {
   const [currentVersion, setCurrentVersion] = useState("0.1.0");
   const [updateChecking, setUpdateChecking] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [updateState, setUpdateState] = useState<UpdateState | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total?: number }>({ downloaded: 0 });
   const msgTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,10 +60,27 @@ export default function Settings() {
   const handleCheckForUpdates = async () => {
     setUpdateChecking(true);
     const result = await checkForUpdate();
+    setUpdateState(result);
     setUpdateMessage(result.status === "available"
       ? `${t("settings.currentVersion")}: ${result.availableVersion ?? ""}`
       : result.status === "not_available" ? t("settings.updateUnavailable") : (result.error ?? t("settings.updateUnavailable")));
     setUpdateChecking(false);
+  };
+
+  const handleDownloadUpdate = async () => {
+    if (!updateState) return;
+    setUpdateState({ ...updateState, status: "downloading" });
+    const result = await downloadUpdate(updateState, (downloaded, total) => setUpdateProgress({ downloaded, total }));
+    setUpdateState(result);
+    setUpdateMessage(result.status === "ready_to_install" ? "Update downloaded. Restart is required to install it." : (result.error ?? "Update download failed."));
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!updateState) return;
+    setUpdateState({ ...updateState, status: "installing" });
+    const result = await installUpdate(updateState);
+    setUpdateState(result);
+    if (result.status === "failed") setUpdateMessage(result.error ?? "Update installation failed.");
   };
 
   const handleExportAll = async () => {
@@ -198,6 +219,7 @@ export default function Settings() {
                 </label>
               ))}
             </div>
+            {themeError && <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-500">{themeError}</p>}
             <div>
               <p className="mb-2 text-xs text-[--color-muted-foreground]">{t("settings.presets")}</p>
               <div className="flex flex-wrap gap-2">
@@ -234,6 +256,15 @@ export default function Settings() {
           {t("settings.currentVersion")}: <span className="font-mono">{currentVersion}</span>
         </p>
         {updateMessage && <p className="mb-3 rounded-md bg-[--color-muted] px-3 py-2 text-xs text-[--color-muted-foreground]">{updateMessage}</p>}
+        {updateState?.status === "available" && (
+          <button onClick={handleDownloadUpdate} className="mr-2 rounded-md border border-[--color-border] px-4 py-2 text-sm hover:bg-[--color-accent]">Download update</button>
+        )}
+        {updateState?.status === "downloading" && (
+          <p className="mb-3 text-xs text-[--color-muted-foreground]">Downloading: {Math.round(updateProgress.downloaded / 1024 / 1024)}MB{updateProgress.total ? ` / ${Math.round(updateProgress.total / 1024 / 1024)}MB` : ""}</p>
+        )}
+        {updateState?.status === "ready_to_install" && (
+          <button onClick={handleInstallUpdate} className="mr-2 rounded-md border border-[--color-border] px-4 py-2 text-sm hover:bg-[--color-accent]">Install and restart</button>
+        )}
         <button onClick={handleCheckForUpdates} disabled={updateChecking} className="inline-flex items-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent] disabled:cursor-not-allowed disabled:opacity-50">
           {updateChecking && <Loader2 className="h-4 w-4 animate-spin" />}
           {t("settings.checkForUpdates")}
@@ -292,6 +323,12 @@ export default function Settings() {
 
       {/* Save */}
       <div className="flex items-center justify-between">
+        <button
+          onClick={cancelThemeChanges}
+          className="rounded-lg border border-[--color-border] px-5 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent]"
+        >
+          Cancel
+        </button>
         <button
           onClick={saveSettings}
           className="inline-flex items-center gap-2 rounded-lg bg-[--color-primary] px-5 py-2 text-sm font-medium text-[--color-primary-foreground] transition-opacity hover:opacity-90"

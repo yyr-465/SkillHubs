@@ -90,3 +90,58 @@
 - Updater signing uses `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub Actions secrets; secret values are not stored in the repository.
 - `.github/workflows/release.yml` builds signed Windows artifacts on `v*.*.*` tags with `contents: write` permission.
 - The updater plugin is enabled in both Rust and frontend. Real release verification still requires pushing the workflow and publishing a tagged GitHub Release.
+
+### Project Progress Prompt
+- `PROJECT_PROGRESS_PROMPT.md` consolidates completed capabilities, architectural reasoning, unresolved risks, priorities, and a reusable Phase X development prompt.
+- The document distinguishes configured update infrastructure from real release verification and keeps safe skill execution disabled until an allowlist and capability policy exist.
+
+### Phase 8.5A — Exit Cleanup
+
+- `RunEvent::ExitRequested` invokes `ExecutionManager::kill_all()` through `AppState`.
+- Windows managed processes are assigned to a native Job Object by PID; termination therefore covers descendants such as `git cat-file --batch` and helper processes.
+- Cleanup emits start, per-process, and finished messages to stderr for runtime verification.
+- Cargo checks and all 37 backend tests pass; real desktop exit verification still requires running the packaged app and checking `tasklist`.
+
+## Phase 9 — Safe Skill Execution Minimum Loop
+
+- Added an explicit `execute_skill` request requiring user confirmation; Markdown code blocks remain non-executable.
+- The first execution policy is intentionally narrow: only `echo`, `python`, `python3`, and `node` are accepted, shell metacharacters are rejected, and commands are started without a shell.
+- Working directories are limited to the Skill source directory or a validated single-level relative child; process timeout follows the declaration and stdout/stderr are capped at 16 KiB in the returned result.
+- Every completed or timed-out execution writes an `execution_audit` row. Start failures and user cancellation do not execute a process and are returned as explicit errors.
+- Skill detail now exposes the action after a confirmation preview. This is a minimum closed loop, not a general shell runner; broader capabilities still require a reviewed allowlist and policy.
+
+### Phase 9 — Execution Process Ownership Fix
+
+- `ExecutionManager` retains each `ManagedProcess` in its registry after the worker finishes; only the child handle may be consumed by normal output collection.
+- `ManagedProcess` retains its `ProcessGroup` until `kill_all()` clears the registry, and cleanup safely handles processes whose child handle was already consumed.
+- Regression coverage verifies a finished execution remains registered until cleanup and is then removed.
+
+### Phase 8.5A — Async lock contention fix
+
+- `ExecutionHandle` owns `ManagedProcess` directly; process waiting no longer holds a manager-level async mutex across `await`.
+- `ManagedProcess` extracts its child from a short-lived async mutex before waiting, while `kill_all()` terminates the retained Windows Job Object directly.
+- Regression tests cover cleanup during a long-running execution and Windows job-tree cleanup; Rust checks and 40 backend tests pass.
+
+### Phase 8.5A — Final Exit Cleanup Status: COMPLETE
+
+- Real Windows desktop QA passed with Tauri 2.11.4 using `pnpm tauri dev`.
+- Test skill: `qa-execution-git-long`.
+- Three `git.exe` processes were observed while the skill was running.
+- Closing the Tauri application triggered `ExitRequested` cleanup and terminated the complete process tree through the Windows Job Object.
+- `tasklist | findstr git.exe` returned no remaining process.
+- Phase 8.5A Release Gate is complete; no remaining issues are recorded.
+
+### Phase 8.5B — Theme Hardening
+
+- `src/lib/theme.ts` accepts only normalized hex, rgb, and hsl colors; CSS keywords, variables, URLs, and injection strings are rejected.
+- Custom theme preview rejects invalid color input, exposes a user-visible error, validates primary contrast before persistence, and supports restoring the saved baseline through cancel.
+- Custom mode injects the complete theme variable set and removes all custom overrides when switching to system, light, or dark.
+- Frontend type check, production build, and focused theme parser/contrast tests pass. Lint remains warning-only due to pre-existing project warnings.
+- Real Tauri window QA completed on Windows: system, light, dark, and custom modes were exercised; all six presets were visible; Settings was checked at normal and 760px narrow window sizes. No overflow, cutoff, overlap, broken border, or unreadable text was observed. The dev process tree was closed after verification.
+### Phase 8.5C — Updater Hardening
+
+- Added the exact frontend and Rust process plugin version `2.3.1` to support relaunch after update installation.
+- Update handling now models checking, availability, downloading, ready-to-install, installing, installed, cancelled, and failed states, with coarse network/signature/download error classification.
+- Settings exposes download progress and an explicit install-and-restart action. Signature verification remains enabled through the configured Tauri updater public key and endpoint.
+- Release workflow now pins `tauri-apps/tauri-action@v2`; signing inputs remain GitHub Actions secret references only.
+- Verification passed for TypeScript, production build, Rust check, and 40 Rust tests. Real GitHub Release publication, signed artifact verification, clean-machine upgrade, and data-preservation QA remain pending.

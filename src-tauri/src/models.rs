@@ -189,6 +189,22 @@ pub struct ExecutionPreview {
     pub reason: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecuteSkillRequest {
+    pub skill_id: String,
+    pub confirmed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ExecutionResult {
+    pub skill_id: String,
+    pub command: String,
+    pub exit_code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+    pub timed_out: bool,
+}
+
 // -- Phase 5: CRUD & batch types --
 
 /// Request body for updating a single skill's editable fields.

@@ -174,7 +174,34 @@ pub fn init_db() -> SqlResult<Connection> {
         [],
     )?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS execution_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            skill_id TEXT NOT NULL,
+            command TEXT NOT NULL,
+            outcome TEXT NOT NULL,
+            detail TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
     Ok(conn)
+}
+
+pub fn record_execution_audit(
+    conn: &Connection,
+    skill_id: &str,
+    command: &str,
+    outcome: &str,
+    detail: &str,
+) -> SqlResult<()> {
+    conn.execute(
+        "INSERT INTO execution_audit (skill_id, command, outcome, detail) VALUES (?1, ?2, ?3, ?4)",
+        params![skill_id, command, outcome, detail],
+    )?;
+    Ok(())
 }
 
 /// Rebuild the FTS5 full-text search index from the skills table.

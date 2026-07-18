@@ -6,10 +6,11 @@ mod settings;
 mod scanner;
 mod categorizer;
 mod tray;
+mod execution;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
-use models::{ExportCsvRequest, ExportReportRequest, AssignTagRequest, BatchCategorizeRequest, CategorizeProgress, ExecutionPreview, FilterOptions, ImportResult, ScanResult, SearchHistoryItem, Skill, SkillContent, SkillPage, SkillQuery, Stats, Tag, ToggleFavoriteRequest, UpdateSkillRequest};
+use models::{ExportCsvRequest, ExportReportRequest, AssignTagRequest, BatchCategorizeRequest, CategorizeProgress, ExecuteSkillRequest, ExecutionPreview, ExecutionResult, FilterOptions, ImportResult, ScanResult, SearchHistoryItem, Skill, SkillContent, SkillPage, SkillQuery, Stats, Tag, ToggleFavoriteRequest, UpdateSkillRequest};
 use models::{CategorizationEntry, ConflictItem, ResolveConflictsRequest};
 use settings::AppSettings;
 use std::sync::atomic::Ordering;
@@ -21,6 +22,10 @@ struct DbState(Mutex<rusqlite::Connection>);
 
 /// Wrapper for the categorizer shared state.
 struct CategorizerState(Arc<categorizer::CategorizerState>);
+
+struct AppState {
+    execution_manager: Arc<execution::manager::ExecutionManager>,
+}
 
 // -- Tauri Commands --
 
@@ -63,14 +68,107 @@ async fn prepare_skill_execution(
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let skill = db::get_skill_by_id(&conn, &skill_id).map_err(|e| e.to_string())?
         .ok_or_else(|| "Skill not found".to_string())?;
-    let path = std::path::Path::new(&skill.source_path).join("SKILL.md");
-    let front_matter = parser::parse_skill_md(&path)?;
-    Ok(front_matter.execution.map(|spec| ExecutionPreview {
-        skill_id,
-        spec,
-        executable: false,
-        reason: Some("Command execution is disabled until a secure allowlist and capability policy are configured.".to_string()),
-    }))
+    execution::preparation::preview(&skill).map_err(|error| error.to_string())
+}
+
+/// Start a managed Skill execution.
+#[tauri::command]
+async fn start_skill_execution(
+    request: StartSkillExecutionRequest,
+    db_state: tauri::State<'_, DbState>,
+    state: tauri::State<'_, AppState>,
+) -> Result<execution::state::ExecutionRecord, String> {
+    let skill = {
+        let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+        db::get_skill_by_id(&conn, &request.skill_id).map_err(|e| e.to_string())?
+            .ok_or_else(|| "Skill not found".to_string())?
+    };
+    let prepared = execution::preparation::prepare_execution(&skill)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "This Skill has no execution declaration.".to_string())?;
+    state.execution_manager.start_execution(
+        prepared.skill_id,
+        prepared.executable,
+        prepared.args,
+        &prepared.working_dir,
+        prepared.timeout_seconds,
+    ).await.map_err(|error| error.to_string())
+}
+
+/// Return the current state of a managed Skill execution.
+#[tauri::command]
+fn get_execution_status(
+    execution_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<execution::state::ExecutionRecord, String> {
+    state.execution_manager.get_execution_status(&execution_id).map_err(|error| error.to_string())
+}
+
+/// Cancel a managed Skill execution.
+#[tauri::command]
+async fn cancel_skill_execution(
+    execution_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<execution::state::ExecutionRecord, String> {
+    state.execution_manager.cancel_execution(&execution_id).await.map_err(|error| error.to_string())
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct StartSkillExecutionRequest {
+    skill_id: String,
+}
+
+/// Deprecated: use start_skill_execution instead.
+#[tauri::command]
+#[deprecated(note = "use start_skill_execution instead")]
+async fn execute_skill(
+    request: ExecuteSkillRequest,
+    db_state: tauri::State<'_, DbState>,
+    app_state: tauri::State<'_, AppState>,
+) -> Result<ExecutionResult, String> {
+    if !request.confirmed {
+        return Err("Explicit user confirmation is required.".into());
+    }
+    let skill = {
+        let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+        db::get_skill_by_id(&conn, &request.skill_id).map_err(|e| e.to_string())?
+            .ok_or_else(|| "Skill not found".to_string())?
+    };
+    let prepared = execution::preparation::prepare_execution(&skill)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "This Skill has no execution declaration.".to_string())?;
+    let command = prepared.executable.clone();
+    let args = prepared.args.clone();
+    let execution_id = app_state.execution_manager.start_execution(
+        prepared.skill_id.clone(),
+        prepared.executable,
+        prepared.args,
+        &prepared.working_dir,
+        prepared.timeout_seconds,
+    ).await.map_err(|error| error.to_string())?.execution_id;
+
+    loop {
+        let record = app_state.execution_manager.get_execution_status(&execution_id)
+            .map_err(|error| error.to_string())?;
+        match record.status {
+            execution::state::ExecutionStatus::Success
+            | execution::state::ExecutionStatus::Failed
+            | execution::state::ExecutionStatus::Cancelled
+            | execution::state::ExecutionStatus::Timeout => {
+                return Ok(ExecutionResult {
+                    skill_id: record.skill_id,
+                    command: std::iter::once(command).chain(args).collect::<Vec<_>>().join(" "),
+                    exit_code: record.exit_code,
+                    stdout: record.stdout,
+                    stderr: record.stderr,
+                    timed_out: record.status == execution::state::ExecutionStatus::Timeout,
+                });
+            }
+            execution::state::ExecutionStatus::Preview | execution::state::ExecutionStatus::Running => {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        }
+    }
 }
 
 /// Return a single skill by its folder-name ID.
@@ -415,9 +513,11 @@ pub fn run() {
         .manage(std::sync::Mutex::new(false))
         .manage(DbState(Mutex::new(conn)))
         .manage(CategorizerState(Arc::new(categorizer::CategorizerState::new())))
+        .manage(AppState { execution_manager: Arc::new(execution::manager::ExecutionManager::new()) })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _shortcut, event| {
             if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                 tray::toggle_main_window(app);
@@ -427,6 +527,10 @@ pub fn run() {
             scan_skills,
             get_skill_content,
             prepare_skill_execution,
+            start_skill_execution,
+            get_execution_status,
+            cancel_skill_execution,
+            execute_skill,
             get_all_skills,
             get_skill_by_id,
             search_skills,
@@ -484,6 +588,15 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle: &tauri::AppHandle, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                if let Some(state) = app_handle.try_state::<AppState>() {
+                    if let Err(error) = tauri::async_runtime::block_on(state.inner().execution_manager.kill_all()) {
+                        eprintln!("Failed to clean up executions during exit: {error}");
+                    }
+                }
+            }
+        });
 }

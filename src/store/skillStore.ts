@@ -137,6 +137,46 @@ export interface ResolveConflictsRequest {
   resolutions: Record<string, string>;
 }
 
+export interface ExecutionResult {
+  skill_id: string;
+  command: string;
+  exit_code: number | null;
+  stdout: string;
+  stderr: string;
+  timed_out: boolean;
+}
+
+export type ExecutionUIState = "idle" | "preview" | "confirm" | "running" | "result" | "error";
+export type ExecutionStatus = "Preview" | "Running" | "Success" | "Failed" | "Cancelled" | "Timeout";
+
+export interface ExecutionSpec {
+  command: string;
+  args: string[];
+  working_dir: string | null;
+  timeout_seconds: number;
+  requires_confirmation: boolean;
+}
+
+export interface ExecutionPreview {
+  skill_id: string;
+  spec: ExecutionSpec;
+  executable: boolean;
+  reason: string | null;
+}
+
+export interface ExecutionRecord {
+  execution_id: string;
+  skill_id: string;
+  command: string;
+  args: string[];
+  status: ExecutionStatus;
+  started_at: string | null;
+  finished_at: string | null;
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+}
+
 // -- View mode --
 
 export type ViewMode = "grid" | "list";
@@ -201,6 +241,14 @@ interface SkillStore {
   conflicts: ConflictItem[];
   categorizationHistory: CategorizationEntry[];
 
+  executionUIState: ExecutionUIState;
+  executionPreview: ExecutionPreview | null;
+  executionId: string | null;
+  executionStatus: ExecutionStatus | null;
+  executionResult: ExecutionRecord | null;
+  executionError: string | null;
+  executionStartedAt: number | null;
+
   fetchSkills: () => Promise<void>;
   fetchSkillById: (id: string) => Promise<void>;
   fetchSkillContent: (id: string) => Promise<void>;
@@ -256,6 +304,13 @@ interface SkillStore {
   resolveConflicts: (resolutions: Record<string, string>) => Promise<void>;
   resolveConflict: (skillId: string, category: string) => Promise<void>;
   fetchCategorizationHistory: (skillId: string) => Promise<void>;
+  prepareExecution: (skillId: string) => Promise<void>;
+  startExecution: (skillId: string) => Promise<ExecutionRecord>;
+  refreshExecutionStatus: () => Promise<ExecutionRecord | null>;
+  cancelExecution: () => Promise<ExecutionRecord | null>;
+  resetExecution: () => void;
+  /** @deprecated Use prepareExecution and startExecution. */
+  executeSkill: (skillId: string) => Promise<ExecutionResult>;
 
   clearError: () => void;
 }
@@ -312,6 +367,14 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
   conflictCount: 0,
   conflicts: [],
   categorizationHistory: [],
+
+  executionUIState: "idle",
+  executionPreview: null,
+  executionId: null,
+  executionStatus: null,
+  executionResult: null,
+  executionError: null,
+  executionStartedAt: null,
 
   fetchSkills: async () => {
     set({ isLoading: true, error: null });
@@ -708,6 +771,64 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
     } catch (e) {
       // Non-critical
     }
+  },
+
+  prepareExecution: async (skillId: string) => {
+    try {
+      const preview = await invoke<ExecutionPreview | null>("prepare_skill_execution", { skillId });
+      if (!preview) throw new Error("This Skill has no execution declaration.");
+      set({ executionUIState: "preview", executionPreview: preview, executionError: null, executionResult: null, executionId: null, executionStatus: null, executionStartedAt: null });
+    } catch (e) {
+      set({ executionUIState: "error", executionError: String(e) });
+      throw e;
+    }
+  },
+
+  startExecution: async (skillId: string) => {
+    try {
+      const record = await invoke<ExecutionRecord>("start_skill_execution", { request: { skill_id: skillId } });
+      set({ executionUIState: "running", executionId: record.execution_id, executionStatus: record.status, executionResult: record, executionError: null, executionStartedAt: Date.now() });
+      return record;
+    } catch (e) {
+      set({ executionUIState: "error", executionError: String(e) });
+      throw e;
+    }
+  },
+
+  refreshExecutionStatus: async () => {
+    const executionId = get().executionId;
+    if (!executionId) return null;
+    try {
+      const record = await invoke<ExecutionRecord>("get_execution_status", { executionId });
+      const terminal = record.status === "Success" || record.status === "Failed" || record.status === "Cancelled" || record.status === "Timeout";
+      set({ executionStatus: record.status, executionResult: record, executionUIState: terminal ? "result" : "running", executionError: null });
+      return record;
+    } catch (e) {
+      set({ executionUIState: "error", executionError: String(e) });
+      throw e;
+    }
+  },
+
+  cancelExecution: async () => {
+    const executionId = get().executionId;
+    if (!executionId) return null;
+    try {
+      const record = await invoke<ExecutionRecord>("cancel_skill_execution", { executionId });
+      set({ executionStatus: record.status, executionResult: record, executionUIState: "result", executionError: null });
+      return record;
+    } catch (e) {
+      set({ executionUIState: "error", executionError: String(e) });
+      throw e;
+    }
+  },
+
+  resetExecution: () => set({ executionUIState: "idle", executionPreview: null, executionId: null, executionStatus: null, executionResult: null, executionError: null, executionStartedAt: null }),
+
+  executeSkill: async (skillId: string) => {
+    const preview = await invoke<{ spec: { command: string; args: string[] }; executable: boolean } | null>("prepare_skill_execution", { skillId });
+    if (!preview) throw new Error("This Skill has no execution declaration.");
+    if (!window.confirm(`Run ${preview.spec.command} ${preview.spec.args.join(" ")}?`)) throw new Error("Execution cancelled by user.");
+    return invoke<ExecutionResult>("execute_skill", { request: { skill_id: skillId, confirmed: true } });
   },
 
   clearError: () => set({ error: null }),

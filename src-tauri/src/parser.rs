@@ -21,7 +21,7 @@ fn parse_execution(value: &Value, path: &Path) -> Result<ExecutionSpec, String> 
     let command = get("command").and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty() && !s.chars().any(char::is_control)).ok_or_else(|| format!("Invalid execution command in {}", path.display()))?.to_string();
     let args = match get("args") { None => Vec::new(), Some(Value::Sequence(values)) => values.iter().map(|v| v.as_str().filter(|s| !s.chars().any(char::is_control)).map(ToOwned::to_owned).ok_or_else(|| format!("Invalid execution args in {}", path.display()))).collect::<Result<Vec<_>, _>>()?, _ => return Err(format!("Invalid execution args in {}", path.display())) };
     let timeout_seconds = get("timeout_seconds").and_then(Value::as_u64).unwrap_or(300);
-    if !(1..=3600).contains(&timeout_seconds) { return Err(format!("Execution timeout must be between 1 and 3600 seconds in {}", path.display())); }
+    if !(1..=300).contains(&timeout_seconds) { return Err(format!("Execution timeout must be between 1 and 300 seconds in {}", path.display())); }
     let working_dir = get("working_dir").and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty() && !s.contains("..") && !s.contains('/') && !s.contains('\\')).map(ToOwned::to_owned);
     if get("working_dir").is_some() && working_dir.is_none() { return Err(format!("Invalid execution working_dir in {}", path.display())); }
     let requires_confirmation = get("requires_confirmation").and_then(Value::as_bool).unwrap_or(true);
