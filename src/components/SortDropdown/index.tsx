@@ -2,13 +2,17 @@
 import { useTranslation } from "@/i18n";
 import { useSkillStore } from "@/store/skillStore";
 
-const SORT_OPTIONS: { field: string; labelKey: string }[] = [
+const SORT_OPTIONS = [
   { field: "Name", labelKey: "skillList.sortName" },
   { field: "DateAdded", labelKey: "skillList.sortDate" },
   { field: "Category", labelKey: "skillList.sortCategory" },
   { field: "Risk", labelKey: "skillList.sortRisk" },
   { field: "Source", labelKey: "skillList.sortSource" },
-];
+] as const;
+
+function parseSortField(value: string) {
+  return SORT_OPTIONS.find((option) => option.field === value)?.field;
+}
 
 export default function SortDropdown() {
   const { t } = useTranslation();
@@ -23,9 +27,7 @@ export default function SortDropdown() {
       <div className="relative">
         <select
           value={currentField}
-          onChange={(e) =>
-            setFilter({ sort_field: (e.target.value || undefined) as any })
-          }
+          onChange={(e) => setFilter({ sort_field: parseSortField(e.target.value) })}
           className="appearance-none rounded-md border border-[--color-border] bg-[--color-card] px-3 py-1.5 pr-8 text-xs text-[--color-foreground] outline-none transition-colors hover:border-[--color-primary]/40 focus:border-[--color-primary]"
         >
           <option value="">{t("skillList.sortBy")}</option>

@@ -165,3 +165,11 @@
 - Update download and install failures now use localized actionable messages instead of raw plugin errors.
 - Downloading exposes a cancel action that freezes progress, closes updater resources, records `cancelled`, and prevents transition to install. The upstream updater API has no native abort token, so transport-level cancellation remains a plugin limitation.
 - `v0.1.5` is a version-only signed QA target used to test the `v0.1.4` interruption and cancellation behavior.
+
+### Phase 8.5C — Windows updater acceptance results
+
+- Signed upgrades `0.1.1 → 0.1.2`, `0.1.2 → 0.1.3`, `0.1.3 → 0.1.4`, and `0.1.4 → 0.1.5` completed with automatic restart.
+- `0.1.5` reports `当前已是最新版本`; network failure, mismatched signature, interrupted download, user cancellation, and retry paths showed localized actionable states.
+- Interrupted and cancelled downloads never exposed the install action. Signature failure used an isolated app identifier and mismatched valid signature; the temporary endpoint and QA config were removed after testing.
+- Three test Skills, three categories, one favorite, and saved language/theme settings remained intact and readable after upgrades.
+- Update UI passed dark/light and minimum-window checks with no observed clipping, overlap, obscured action, or unreadable state.
