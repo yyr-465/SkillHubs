@@ -1,0 +1,21 @@
+{
+  "productName": "SkillHub Updater QA",
+  "identifier": "com.skillhub.updater-qa",
+  "app": {
+    "windows": [
+      {
+        "title": "SkillHub Updater QA — Invalid Signature Test"
+      }
+    ]
+  },
+  "bundle": {
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://raw.githubusercontent.com/yyr-465/SkillHubs/main/tests/updater-invalid-signature.json"
+      ]
+    }
+  }
+}

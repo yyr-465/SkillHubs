@@ -82,7 +82,9 @@ export default function Settings() {
     setUpdateState({ ...updateState, status: "downloading" });
     const result = await downloadUpdate(updateState, (downloaded, total) => setUpdateProgress({ downloaded, total }));
     setUpdateState(result);
-    setUpdateMessage(result.status === "ready_to_install" ? "Update downloaded. Restart is required to install it." : (result.error ?? "Update download failed."));
+    setUpdateMessage(result.status === "ready_to_install"
+      ? "Update downloaded. Restart is required to install it."
+      : getUpdateErrorMessage(result));
   };
 
   const handleInstallUpdate = async () => {
@@ -90,7 +92,7 @@ export default function Settings() {
     setUpdateState({ ...updateState, status: "installing" });
     const result = await installUpdate(updateState);
     setUpdateState(result);
-    if (result.status === "failed") setUpdateMessage(result.error ?? "Update installation failed.");
+    if (result.status === "failed") setUpdateMessage(getUpdateErrorMessage(result));
   };
 
   const handleExportAll = async () => {
