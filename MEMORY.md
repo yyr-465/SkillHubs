@@ -164,3 +164,4 @@
 - An isolated QA app identifier and manifest exercise a real mismatched-signature failure without changing the production endpoint or public key.
 - Update download and install failures now use localized actionable messages instead of raw plugin errors.
 - Downloading exposes a cancel action that freezes progress, closes updater resources, records `cancelled`, and prevents transition to install. The upstream updater API has no native abort token, so transport-level cancellation remains a plugin limitation.
+- `v0.1.5` is a version-only signed QA target used to test the `v0.1.4` interruption and cancellation behavior.

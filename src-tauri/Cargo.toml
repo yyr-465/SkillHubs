@@ -1,6 +1,6 @@
 [package]
 name = "skillhub"
-version = "0.1.4"
+version = "0.1.5"
 description = "SkillHub - Manage and browse installed AI Skills"
 authors = ["you"]
 edition = "2021"
