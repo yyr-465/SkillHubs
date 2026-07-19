@@ -57,13 +57,23 @@ export default function Settings() {
     getCurrentVersion().then(setCurrentVersion);
   }, []);
 
+  const getUpdateErrorMessage = (state: UpdateState) => {
+    switch (state.errorKind) {
+      case "network": return t("settings.updateNetworkError");
+      case "signature": return t("settings.updateSignatureError");
+      case "download_interrupted": return t("settings.updateDownloadInterrupted");
+      case "cancelled": return t("settings.updateCancelled");
+      default: return t("settings.updateUnknownError");
+    }
+  };
+
   const handleCheckForUpdates = async () => {
     setUpdateChecking(true);
     const result = await checkForUpdate();
     setUpdateState(result);
     setUpdateMessage(result.status === "available"
       ? `${t("settings.currentVersion")}: ${result.availableVersion ?? ""}`
-      : result.status === "not_available" ? t("settings.updateUnavailable") : (result.error ?? t("settings.updateUnavailable")));
+      : result.status === "not_available" ? t("settings.updateUnavailable") : getUpdateErrorMessage(result));
     setUpdateChecking(false);
   };
 
@@ -267,7 +277,9 @@ export default function Settings() {
         )}
         <button onClick={handleCheckForUpdates} disabled={updateChecking} className="inline-flex items-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent] disabled:cursor-not-allowed disabled:opacity-50">
           {updateChecking && <Loader2 className="h-4 w-4 animate-spin" />}
-          {t("settings.checkForUpdates")}
+          {updateState?.status === "failed" || updateState?.status === "cancelled"
+            ? t("settings.retryUpdate")
+            : t("settings.checkForUpdates")}
         </button>
       </div>
 

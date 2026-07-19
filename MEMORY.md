@@ -152,3 +152,9 @@
 - The fix release version is `0.1.2`, aligned across package, Cargo, Cargo lock, and Tauri configuration.
 - This change does not alter updater endpoints, signing configuration, versions, database behavior, or release artifacts.
 - Local TypeScript, lint, production build, Rust build, and 40 Rust tests pass. Windows VM failure-mode testing and public Release verification remain external QA tasks.
+
+### Phase 8.5C — v0.1.3 network error UX
+
+- Update-check connection failures are classified as `network`; download failures remain `download_interrupted`.
+- Settings displays localized, actionable messages instead of raw updater errors and changes the check action to `Retry` after failure or cancellation.
+- The version is aligned at `0.1.3`; TypeScript, lint, production build, Rust build, and 40 Rust tests pass before release.

@@ -16,12 +16,15 @@ export interface UpdateState {
   error?: string;
 }
 
-function classifyUpdateError(error: unknown): UpdateErrorKind {
+type UpdateOperation = "check" | "download" | "install";
+
+function classifyUpdateError(error: unknown, operation: UpdateOperation): UpdateErrorKind {
   const message = String(error).toLowerCase();
   if (message.includes("signature") || message.includes("ed25519") || message.includes("pubkey")) return "signature";
   if (message.includes("cancel")) return "cancelled";
-  if (message.includes("download") || message.includes("connection") || message.includes("network") || message.includes("timeout")) return "download_interrupted";
-  return "network";
+  if (operation === "download") return "download_interrupted";
+  if (operation === "check") return "network";
+  return "unknown";
 }
 
 export async function checkForUpdate(): Promise<UpdateState> {
@@ -32,7 +35,7 @@ export async function checkForUpdate(): Promise<UpdateState> {
       ? { status: "available", currentVersion, availableVersion: update.version, update }
       : { status: "not_available", currentVersion };
   } catch (error) {
-    return { status: "failed", currentVersion, errorKind: classifyUpdateError(error), error: String(error) };
+    return { status: "failed", currentVersion, errorKind: classifyUpdateError(error, "check"), error: String(error) };
   }
 }
 
@@ -51,7 +54,7 @@ export async function downloadUpdate(
     });
     return { ...state, status: "ready_to_install", downloadedBytes, totalBytes };
   } catch (error) {
-    const errorKind = classifyUpdateError(error);
+    const errorKind = classifyUpdateError(error, "download");
     return { ...state, status: errorKind === "cancelled" ? "cancelled" : "failed", errorKind, error: String(error), downloadedBytes, totalBytes };
   }
 }
@@ -63,7 +66,7 @@ export async function installUpdate(state: UpdateState): Promise<UpdateState> {
     await relaunch();
     return { ...state, status: "installed" };
   } catch (error) {
-    return { ...state, status: "failed", errorKind: classifyUpdateError(error), error: String(error) };
+    return { ...state, status: "failed", errorKind: classifyUpdateError(error, "install"), error: String(error) };
   }
 }
 
