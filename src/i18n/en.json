@@ -55,7 +55,7 @@
   "settings.updates": "Updates",
   "settings.currentVersion": "Current version",
   "settings.checkForUpdates": "Check for updates",
-  "settings.updateUnavailable": "Automatic updates are not configured yet. A signed GitHub Release endpoint is required.",
+  "settings.updateUnavailable": "You are using the latest version.",
   "settings.apiKey": "DeepSeek API Key",
   "settings.apiKeyPlaceholder": "Enter your DeepSeek API Key...",
   "settings.minimizeToTray": "Minimize to tray when closing",

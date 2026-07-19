@@ -145,3 +145,10 @@
 - Settings exposes download progress and an explicit install-and-restart action. Signature verification remains enabled through the configured Tauri updater public key and endpoint.
 - Release workflow now pins `tauri-apps/tauri-action@v2`; signing inputs remain GitHub Actions secret references only.
 - Verification passed for TypeScript, production build, Rust check, and 40 Rust tests. Real GitHub Release publication, signed artifact verification, clean-machine upgrade, and data-preservation QA remain pending.
+
+### Phase 8.5C — v0.1.2 no-update copy fix
+
+- `settings.updateUnavailable` now means the updater check returned no available release: English uses `You are using the latest version.` and Chinese uses `当前已是最新版本`.
+- The fix release version is `0.1.2`, aligned across package, Cargo, Cargo lock, and Tauri configuration.
+- This change does not alter updater endpoints, signing configuration, versions, database behavior, or release artifacts.
+- Local TypeScript, lint, production build, Rust build, and 40 Rust tests pass. Windows VM failure-mode testing and public Release verification remain external QA tasks.
