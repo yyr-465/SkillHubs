@@ -30,6 +30,7 @@ export default function Settings() {
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total?: number }>({ downloaded: 0 });
   const msgTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const downloadAttemptRef = useRef(0);
 
   useEffect(() => {
     if (!loaded) loadSettings();
@@ -79,12 +80,28 @@ export default function Settings() {
 
   const handleDownloadUpdate = async () => {
     if (!updateState) return;
+    const attempt = ++downloadAttemptRef.current;
     setUpdateState({ ...updateState, status: "downloading" });
-    const result = await downloadUpdate(updateState, (downloaded, total) => setUpdateProgress({ downloaded, total }));
+    const result = await downloadUpdate(updateState, (downloaded, total) => {
+      if (attempt === downloadAttemptRef.current) setUpdateProgress({ downloaded, total });
+    });
+    if (attempt !== downloadAttemptRef.current) {
+      await result.update?.close().catch(() => undefined);
+      return;
+    }
     setUpdateState(result);
     setUpdateMessage(result.status === "ready_to_install"
       ? "Update downloaded. Restart is required to install it."
       : getUpdateErrorMessage(result));
+  };
+
+  const handleCancelDownload = async () => {
+    if (updateState?.status !== "downloading") return;
+    downloadAttemptRef.current += 1;
+    await updateState.update?.close().catch(() => undefined);
+    const cancelledState: UpdateState = { ...updateState, status: "cancelled", errorKind: "cancelled" };
+    setUpdateState(cancelledState);
+    setUpdateMessage(getUpdateErrorMessage(cancelledState));
   };
 
   const handleInstallUpdate = async () => {
@@ -272,7 +289,10 @@ export default function Settings() {
           <button onClick={handleDownloadUpdate} className="mr-2 rounded-md border border-[--color-border] px-4 py-2 text-sm hover:bg-[--color-accent]">Download update</button>
         )}
         {updateState?.status === "downloading" && (
-          <p className="mb-3 text-xs text-[--color-muted-foreground]">Downloading: {Math.round(updateProgress.downloaded / 1024 / 1024)}MB{updateProgress.total ? ` / ${Math.round(updateProgress.total / 1024 / 1024)}MB` : ""}</p>
+          <div className="mb-3">
+            <p className="mb-2 text-xs text-[--color-muted-foreground]">Downloading: {Math.round(updateProgress.downloaded / 1024 / 1024)}MB{updateProgress.total ? ` / ${Math.round(updateProgress.total / 1024 / 1024)}MB` : ""}</p>
+            <button onClick={handleCancelDownload} className="rounded-md border border-[--color-border] px-4 py-2 text-sm hover:bg-[--color-accent]">{t("settings.cancelUpdate")}</button>
+          </div>
         )}
         {updateState?.status === "ready_to_install" && (
           <button onClick={handleInstallUpdate} className="mr-2 rounded-md border border-[--color-border] px-4 py-2 text-sm hover:bg-[--color-accent]">Install and restart</button>

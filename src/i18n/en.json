@@ -62,6 +62,7 @@
   "settings.updateCancelled": "The update was cancelled. You can start the download again when ready.",
   "settings.updateUnknownError": "The update could not be completed. Try again later.",
   "settings.retryUpdate": "Retry",
+  "settings.cancelUpdate": "Cancel download",
   "settings.apiKey": "DeepSeek API Key",
   "settings.apiKeyPlaceholder": "Enter your DeepSeek API Key...",
   "settings.minimizeToTray": "Minimize to tray when closing",

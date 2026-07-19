@@ -1,6 +1,9 @@
 {
   "productName": "SkillHub Updater QA",
   "identifier": "com.skillhub.updater-qa",
+  "build": {
+    "beforeBuildCommand": "node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build"
+  },
   "app": {
     "windows": [
       {

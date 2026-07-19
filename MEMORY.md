@@ -158,3 +158,9 @@
 - Update-check connection failures are classified as `network`; download failures remain `download_interrupted`.
 - Settings displays localized, actionable messages instead of raw updater errors and changes the check action to `Retry` after failure or cancellation.
 - The version is aligned at `0.1.3`; TypeScript, lint, production build, Rust build, and 40 Rust tests pass before release.
+
+### Phase 8.5C — v0.1.4 updater failure QA
+
+- An isolated QA app identifier and manifest exercise a real mismatched-signature failure without changing the production endpoint or public key.
+- Update download and install failures now use localized actionable messages instead of raw plugin errors.
+- Downloading exposes a cancel action that freezes progress, closes updater resources, records `cancelled`, and prevents transition to install. The upstream updater API has no native abort token, so transport-level cancellation remains a plugin limitation.
