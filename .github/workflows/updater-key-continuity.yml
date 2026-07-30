@@ -60,8 +60,12 @@ jobs:
               Where-Object { $_ -and $_ -notmatch '^untrusted comment:' } |
               Select-Object -First 1
           ).Trim()
+          $signatureEnvelope = (Get-Content $signaturePath -Raw).Trim()
+          $signatureText = [Text.Encoding]::UTF8.GetString(
+            [Convert]::FromBase64String($signatureEnvelope)
+          )
           $signaturePayload = (
-            Get-Content $signaturePath |
+            $signatureText -split '\r?\n' |
               Where-Object { $_ -and $_ -notmatch '^(untrusted|trusted) comment:' } |
               Select-Object -First 1
           ).Trim()
@@ -72,8 +76,8 @@ jobs:
             throw 'Updater signing data has an invalid format.'
           }
 
-          $publicKeyId = [Convert]::ToHexString($publicBytes[2..9])
-          $signatureKeyId = [Convert]::ToHexString($signatureBytes[2..9])
+          $publicKeyId = [BitConverter]::ToString($publicBytes[2..9]).Replace('-', '')
+          $signatureKeyId = [BitConverter]::ToString($signatureBytes[2..9]).Replace('-', '')
           if ($publicKeyId -ne $signatureKeyId) {
             throw 'The configured updater private key does not match the public key embedded in the application.'
           }
