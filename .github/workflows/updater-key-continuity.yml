@@ -1,0 +1,81 @@
+name: Verify updater key continuity
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sign continuity challenge
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw 'TAURI_SIGNING_PRIVATE_KEY is not configured.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD)) {
+            throw 'TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not configured.'
+          }
+
+          $challenge = Join-Path $env:RUNNER_TEMP 'skillhub-updater-key-continuity.txt'
+          Set-Content -LiteralPath $challenge -Value 'SkillHub updater key continuity challenge' -Encoding ascii
+          pnpm exec tauri signer sign $challenge
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The configured updater private key and password could not sign the challenge.'
+          }
+
+          $signaturePath = "$challenge.sig"
+          if (-not (Test-Path -LiteralPath $signaturePath)) {
+            throw 'The updater signer did not produce a signature.'
+          }
+
+          $config = Get-Content 'src-tauri\tauri.conf.json' -Raw | ConvertFrom-Json
+          $publicKeyText = [Text.Encoding]::UTF8.GetString(
+            [Convert]::FromBase64String($config.plugins.updater.pubkey)
+          )
+          $publicPayload = (
+            $publicKeyText -split '\r?\n' |
+              Where-Object { $_ -and $_ -notmatch '^untrusted comment:' } |
+              Select-Object -First 1
+          ).Trim()
+          $signaturePayload = (
+            Get-Content $signaturePath |
+              Where-Object { $_ -and $_ -notmatch '^(untrusted|trusted) comment:' } |
+              Select-Object -First 1
+          ).Trim()
+
+          $publicBytes = [Convert]::FromBase64String($publicPayload)
+          $signatureBytes = [Convert]::FromBase64String($signaturePayload)
+          if ($publicBytes.Length -lt 10 -or $signatureBytes.Length -lt 10) {
+            throw 'Updater signing data has an invalid format.'
+          }
+
+          $publicKeyId = [Convert]::ToHexString($publicBytes[2..9])
+          $signatureKeyId = [Convert]::ToHexString($signatureBytes[2..9])
+          if ($publicKeyId -ne $signatureKeyId) {
+            throw 'The configured updater private key does not match the public key embedded in the application.'
+          }
+
+          Write-Output 'Updater signing key continuity verified.'
