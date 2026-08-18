@@ -1,6 +1,6 @@
 # Publishes the built dist/ to the gh-pages branch (GitHub Pages).
 # Run from YOUR OWN PowerShell (where git is authenticated):
-#   cd D:\dp-harness\skillhubs\SkillHub
+#   cd <your SkillHub checkout>
 #   powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1
 $ErrorActionPreference = "Stop"
 

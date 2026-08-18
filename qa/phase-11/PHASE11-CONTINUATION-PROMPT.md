@@ -8,7 +8,7 @@
 
 已有:
 
-- 项目: `D:\ChatGPT\Codex\skillhubs\SkillHub`，React 19 + TypeScript + Vite + Tauri 2 + Rust + SQLite；包管理器为 pnpm。
+- 项目: SkillHub（Tauri 2 桌面应用仓库），React 19 + TypeScript + Vite + Tauri 2 + Rust + SQLite；包管理器为 pnpm。
 - 项目根目录与 `SkillHub` 子目录各有 `AGENTS.md` 和 `MEMORY.md`。开始工作前必须读取实际仓库 `SkillHub\AGENTS.md` 与 `SkillHub\MEMORY.md`。
 - 仓库在开始本任务前已经是 dirty；不得覆盖或回滚无关改动。
 - Phase 11 总报告: `qa/phase-11/PHASE11-QA-REPORT.md`。

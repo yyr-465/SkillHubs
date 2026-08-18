@@ -9,7 +9,7 @@ use std::fs;
 /// Bump this whenever the migration set changes.
 pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
-/// Path to the SQLite database file under C:\Users\DELL/.skillhub/skills.db
+/// Path to the SQLite database file: <user home>/.skillhub/skills.db
 pub(crate) fn db_path() -> PathBuf {
     let home = dirs_next().unwrap_or_else(|| PathBuf::from("."));
     let dir = home.join(".skillhub");

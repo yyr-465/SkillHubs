@@ -1,3 +1,5 @@
+> 工作区说明：本仓库曾随开发环境迁移（2026-08-15），现于独立工作区维护；git 历史与远程 origin 连续、无分叉。本文档内路径均为相对/通用表述，不含本机盘符。
+
 # Web 版发布流程（强制：每次 SkillHubs 更新后必须执行）
 
 Web 版是独立发布的静态站点（GitHub Pages，`gh-pages` 分支），公网地址：
@@ -367,7 +369,7 @@ Follow-up changes after the user opened the Web build and reviewed it:
 
 - The prior "本机无网络" (no network) assumption is WRONG. Network IS available through Node.js/pnpm: `pnpm ping` returns PONG for `https://registry.npmjs.org/` and `https://registry.npmmirror.com/`; `pnpm view react-router` fetched `8.3.0`; a throwaway `pnpm add picocolors@1.1.1` completed the full pipeline (download → store → link) in 1.4s; Node `fetch` to `api.github.com`/`github.com` returned HTTP 200.
 - The false "offline" impression came from two NON-network artifacts: `curl.exe` fails with `schannel: SEC_E_NO_CREDENTIALS` (TLS credential issue — DNS/TCP resolve and connect fine), and `npm` fails with sandbox `EPERM` writing `%LOCALAPPDATA%\npm-cache\_cacache`. Neither is a network outage.
-- All offline stores/caches are empty (project `.pnpm-store`, `%LOCALAPPDATA%\pnpm-cache` (metadata only, no tarballs), `npm-cache\_cacache`, backup `D:\ChatGPT\Codex\skillhubs\.pnpm-store`), so a true offline `pnpm install --offline` would still fail; but online `pnpm install` works, so offline recovery is unnecessary for new/changed deps.
+- All offline stores/caches are empty (project `.pnpm-store`, `%LOCALAPPDATA%\pnpm-cache` (metadata only, no tarballs), `npm-cache\_cacache`, the migrated project backup's `.pnpm-store`), so a true offline `pnpm install --offline` would still fail; but online `pnpm install` works, so offline recovery is unnecessary for new/changed deps.
 - Default registry: `https://registry.npmjs.org/`; mirror `https://registry.npmmirror.com` also reachable.
 
 # Phase 12 — Sign-off wrap-up (P1-3)
@@ -418,5 +420,5 @@ Follow-up changes after the user opened the Web build and reviewed it:
 - 删除 qa/phase-11/fixtures/db-not-writable-profile/ 整个夹具树（内含 0 字节 skills.db，带 DELL:(DENY)(W) DENY-write ACE）。
 - 删除方式：cmd /c rd /s /q（PowerShell Remove-Item 会被 DENY-write ACE 拒绝——删除前需写权限清属性；rd 走目录 DELETE_CHILD，不受影响）。
 - 验证：qa/phase-11/fixtures/ 为空（目录保留，符合项目约定）；git status 无新增改动（qa/ 本就 untracked，59 条未提交条目数不变）；工作区内无其他 skills.db（正式数据库在 %APPDATA%，未受影响，未触碰任何 ACL）。
-- 观察（未处理，不在 P3-9 范围）：根级 D:\dp-harness\skillhubs\qa\phase-11\evidence\text-audit.md 是迁移遗留的 SkillHub 仓库外零散副本。
+- 观察（未处理，不在 P3-9 范围）：工作区根目录（SkillHub 仓库之外）还遗留一份 phase-11 的 text-audit.md 零散副本，是迁移时带出的，不在 P3-9 范围内。
 
