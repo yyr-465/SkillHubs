@@ -126,6 +126,10 @@ SkillHub's [Code signing policy](CODE_SIGNING_POLICY.md) defines release provena
 
 Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, required checks, commit guidelines, and security rules.
+
 ## Support and security
 
 - Report reproducible bugs through [GitHub Issues](https://github.com/yyr-465/SkillHubs/issues).
