@@ -1,0 +1,7 @@
+{
+  "productName": "SkillHub QA",
+  "identifier": "com.skillhub.app.qa",
+  "bundle": {
+    "createUpdaterArtifacts": false
+  }
+}

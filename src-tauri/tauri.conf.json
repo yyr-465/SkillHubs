@@ -15,13 +15,13 @@
         "title": "SkillHub",
         "width": 1200,
         "height": 800,
-        "minWidth": 900,
+        "minWidth": 760,
         "minHeight": 600,
         "center": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; connect-src 'self' ipc: http://ipc.localhost; font-src 'self' data:; object-src 'none'"
     }
   },
   "bundle": {

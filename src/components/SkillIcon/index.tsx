@@ -58,13 +58,17 @@ export default function SkillIcon({ icon, size = "md", className = "" }: SkillIc
     );
   }
 
-  // SVG (starts with <svg)
+  // SVG (starts with <svg>) — render via an inert <img> data URI so arbitrary
+  // SVG markup from SKILL.md front matter can never execute script or load
+  // external resources (defense against malicious skill icons).
   if (icon.trim().startsWith("<svg")) {
+    const svgDataUri = `data:image/svg+xml;utf8,${encodeURIComponent(icon.trim())}`;
     return (
       <div
         className={`flex shrink-0 items-center justify-center rounded-md overflow-hidden bg-[--color-card] ${dims.container} ${className}`}
-        dangerouslySetInnerHTML={{ __html: icon.trim() }}
-      />
+      >
+        <img src={svgDataUri} alt="" className="h-full w-full object-contain" />
+      </div>
     );
   }
 
