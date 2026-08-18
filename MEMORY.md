@@ -422,3 +422,28 @@ Follow-up changes after the user opened the Web build and reviewed it:
 - 验证：qa/phase-11/fixtures/ 为空（目录保留，符合项目约定）；git status 无新增改动（qa/ 本就 untracked，59 条未提交条目数不变）；工作区内无其他 skills.db（正式数据库在 %APPDATA%，未受影响，未触碰任何 ACL）。
 - 观察（未处理，不在 P3-9 范围）：工作区根目录（SkillHub 仓库之外）还遗留一份 phase-11 的 text-audit.md 零散副本，是迁移时带出的，不在 P3-9 范围内。
 
+# 会话进度快照（2026-08-18）
+
+## 今天已完成
+
+- **P3-9**：清理遗留 QA 夹具（删除 qa/phase-11/fixtures/db-not-writable-profile/，含 0 字节 skills.db + DENY-write ACE）。PowerShell Remove-Item 被 DENY-write ACE 拒绝，改用 cmd /c rd /s /q 成功；fixtures 目录保持为空；git 状态无新增改动。
+- **提交 59 条未提交改动**：按主题拆成 4 个 commit（onboarding / backup / security / web），删除 3 个一次性 QA 导入 json（qa-skill-*.json，grep 确认无任何引用），解除 tsconfig.app.tsbuildinfo 跟踪（*.tsbuildinfo 已在 .gitignore，属历史误跟踪；git rm --cached，文件留盘自动再生成）。
+- **路径脱敏（chore: scrub）**：删除陈旧一次性修补脚本 .fix.py；清理 MEMORY.md、db.rs 注释、PHASE11-CONTINUATION-PROMPT、deploy-gh-pages.ps1 注释中的本机盘符路径（统一改为相对/通用表述）；MEMORY.md 顶部新增迁移说明（不含盘符）。全仓库 grep 验证 0 残留。
+- **push 至 GitHub**：DSH 沙箱内 git 无法非交互取得凭据（named-pipe EPERM 阻断凭据提示脚本），由用户在自有终端 push 完成；仓库本地 config 已设 http.sslBackend=openssl（本机 schannel 损坏的既定 workaround，仅本地生效不提交）。
+- **GitHub Pages 自动部署闭环**：pages.yml 首次运行失败（Pages Source 仍是分支部署，deploy-pages 需 GitHub Actions 源）；切换 Source 为 GitHub Actions 后重跑成功，后续 push main 自动部署。已验证站点 200、JS/CSS MIME 正确、catalog 8 个示例 Skill 完整。
+- **P1-7 开始**：README 更新（Try it online 区块、Release status 补 Web MVP 状态、Web edition build & deploy 小节、Contributing 链接）；新建 CONTRIBUTING.md（开发环境、目录结构、Required Checks、Conventional-Commits 规范、安全规则：不提交 secret / 本机路径）。
+
+## 当前状态
+
+- 本地 main 领先远程 1 个 commit（600be1f docs: add CONTRIBUTING guide）待 push。
+- 自动部署已启用：push main → pages.yml → GitHub Pages（Source 已切 GitHub Actions）。
+- 旧目录（原 Codex 工作区）仍为备份：历史停在 30837f4、含当时未提交改动；勿从该目录 push，避免历史分叉。
+
+## 明天待办（建议顺序）
+
+1. push 待提交的 600be1f（docs: CONTRIBUTING），确认 pages.yml run 成功。
+2. **P1-7 剩余**：README 配图（qa/phase-11/evidence/ 现成桌面截图 + Web 线上截图）；Quick start 首次使用小节。
+3. **P3-12 技术债**（低优先级，可穿插）：筛选双写、chrono、TOCTOU、cargo fmt 等 11 项；其中 fs 权限（风险 7）若确认有缺口应优先。
+4. **桌面 GUI 外部 QA**（CSP 运行时验证、换机重指向 UI 视觉交互）—— 有真实 Tauri 环境时做。
+5. **P2-6 / P2-7 / P2-8**（签名/密钥）—— 仍 BLOCKED（SignPath 被拒，需真实信任信号，对应 P1-8 积累真实用户/反馈）。
+
