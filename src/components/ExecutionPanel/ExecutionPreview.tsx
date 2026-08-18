@@ -12,7 +12,7 @@ export default function ExecutionPreview({ preview, onExecute, onCancel }: Props
   const { t } = useTranslation();
   const { spec } = preview;
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <div className="grid gap-3 text-sm">
         <Detail label={t("execution.executable")} value={spec.command} />
         <Detail label={t("execution.arguments")} value={spec.args.length ? spec.args.join(" ") : "—"} />
@@ -30,5 +30,5 @@ export default function ExecutionPreview({ preview, onExecute, onCancel }: Props
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-md border border-[--color-border] bg-[--color-background] px-3 py-2"><p className="text-xs text-[--color-muted-foreground]">{label}</p><p className="mt-1 break-all font-mono text-xs">{value}</p></div>;
+  return <div className="min-w-0 max-w-full rounded-md border border-[--color-border] bg-[--color-background] px-3 py-2"><p className="text-xs text-[--color-muted-foreground]">{label}</p><p className="mt-1 max-w-full break-all font-mono text-xs">{value}</p></div>;
 }

@@ -17,6 +17,8 @@ pub struct AppSettings {
     /// Custom background colour (hex, used when theme_mode == "custom")
     pub custom_background: String,
     pub minimize_to_tray: bool,
+    /// User-selected root directory scanned recursively for SKILL.md files.
+    pub skill_directory: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -28,6 +30,7 @@ impl Default for AppSettings {
             custom_primary: "#6366f1".into(),
             custom_background: "#0f0f0f".into(),
             minimize_to_tray: true,
+            skill_directory: None,
         }
     }
 }
@@ -70,8 +73,9 @@ pub fn load_settings() -> AppSettings {
 pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
     let path = settings_path();
     let content = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("Serialize error: {}", e))?;
-    std::fs::write(&path, content).map_err(|e| format!("Write error: {}", e))
+        .map_err(|_| "Settings could not be serialized.".to_string())?;
+    std::fs::write(&path, content)
+        .map_err(|_| "Settings could not be saved. Check storage permissions or available disk space.".to_string())
 }
 
 // ── Locale detection (Windows) ───────────────────────────────────

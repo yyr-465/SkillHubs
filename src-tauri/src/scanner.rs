@@ -1,4 +1,4 @@
-﻿use crate::models::{ScanResult, Skill};
+use crate::models::{ScanResult, Skill};
 use crate::parser::parse_skill_md;
 use std::path::{Path, PathBuf};
 
@@ -9,17 +9,42 @@ fn scan_directory(root: &Path, source_label: &str) -> ScanResult {
     let mut errors = Vec::new();
 
     if !root.exists() {
-        errors.push(format!("Directory does not exist: {}", root.display()));
+        errors.push("Directory does not exist / 目录不存在. Choose another directory / 请选择其他目录。".into());
         return ScanResult { skills, errors };
     }
 
     let entries = match std::fs::read_dir(root) {
         Ok(e) => e,
         Err(e) => {
-            errors.push(format!("Cannot read directory {}: {}", root.display(), e));
+            let _ = e;
+            errors.push("Directory cannot be read / 目录不可读取. Check permissions / 请检查权限。".into());
             return ScanResult { skills, errors };
         }
     };
+
+    // A user may select either a Skills root or one Skill folder directly.
+    // Handle a root SKILL.md before walking child directories so both forms
+    // produce the same result.
+    let root_skill_md = root.join("SKILL.md");
+    if root_skill_md.is_file() {
+        let id = root.file_name().unwrap_or_default().to_string_lossy().to_string();
+        match parse_skill_md(&root_skill_md) {
+            Ok(fm) => skills.push(Skill {
+                id: id.clone(),
+                name: fm.name.unwrap_or_else(|| id.clone()),
+                description: fm.description.unwrap_or_default(),
+                category: fm.category,
+                risk: fm.risk,
+                date_added: fm.date_added,
+                source_path: root.to_string_lossy().to_string(),
+                source: source_label.to_string(),
+                favorite: Some(false),
+                icon: fm.icon,
+            }),
+            Err(_) => errors.push("Invalid SKILL.md / SKILL.md 不合法. Check its front matter / 请检查文件头。".into()),
+        }
+        return ScanResult { skills, errors };
+    }
 
     for entry in entries.flatten() {
         let entry_path = entry.path();
@@ -60,7 +85,8 @@ fn scan_directory(root: &Path, source_label: &str) -> ScanResult {
                 });
             }
             Err(e) => {
-                errors.push(e);
+                let _ = e;
+                errors.push("Invalid SKILL.md / SKILL.md 不合法. Check its front matter / 请检查文件头。".into());
             }
         }
     }
@@ -69,42 +95,35 @@ fn scan_directory(root: &Path, source_label: &str) -> ScanResult {
 }
 
 /// Scan all configured skill directories and merge results.
-pub fn scan_all() -> ScanResult {
-    // Resolve ~ to the user's home directory
-    let home = dirs_next().unwrap_or_else(|| PathBuf::from("."));
-
-    let paths = vec![
-        (
-            home.join(".agentic-awesome-skills").join("skills"),
-            "agentic-awesome",
-        ),
-        (home.join(".codex").join("skills"), "codex"),
-    ];
+pub fn scan_all(configured_directory: Option<&str>) -> ScanResult {
+    let Some(directory) = configured_directory.filter(|value| !value.trim().is_empty()) else {
+        return ScanResult {
+            skills: Vec::new(),
+            errors: Vec::new(),
+        };
+    };
 
     let mut merged = ScanResult {
         skills: Vec::new(),
         errors: Vec::new(),
     };
 
-    for (root, label) in paths {
-        let result = scan_directory(&root, label);
-        merged.skills.extend(result.skills);
-        merged.errors.extend(result.errors);
-    }
+    let result = scan_directory(&PathBuf::from(directory), "configured");
+    merged.skills.extend(result.skills);
+    merged.errors.extend(result.errors);
 
     merged
 }
 
-/// Cross-platform home directory resolution.
-fn dirs_next() -> Option<PathBuf> {
-    #[cfg(target_os = "windows")]
-    {
-        std::env::var("USERPROFILE").ok().map(PathBuf::from)
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        std::env::var("HOME").ok().map(PathBuf::from)
-    }
+/// Whether the configured Skill directory is present and readable.
+/// A missing or unreadable directory must not trigger a destructive rescan,
+/// because the existing rows still reflect the last successful scan.
+pub fn directory_is_readable(configured_directory: Option<&str>) -> bool {
+    let Some(directory) = configured_directory.filter(|value| !value.trim().is_empty()) else {
+        return true;
+    };
+    let path = PathBuf::from(directory);
+    path.exists() && path.is_dir() && std::fs::read_dir(&path).is_ok()
 }
 
 #[cfg(test)]
@@ -155,6 +174,23 @@ mod tests {
         assert_eq!(result.skills[0].name, "Test Skill");
         assert_eq!(result.skills[0].id, "my-test-skill");
         assert_eq!(result.skills[0].source, "test");
+        assert!(result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_scan_finds_skill_when_selected_directory_is_the_skill_folder() {
+        let dir = std::env::temp_dir().join("scan_test_root_skill");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("SKILL.md"),
+            "---\nname: Root Skill\ndescription: A root skill\n---\n",
+        )
+        .unwrap();
+
+        let result = scan_directory(&dir, "test");
+        assert_eq!(result.skills.len(), 1);
+        assert_eq!(result.skills[0].name, "Root Skill");
         assert!(result.errors.is_empty());
     }
 }

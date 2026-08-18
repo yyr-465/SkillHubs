@@ -6,6 +6,8 @@ pub enum ExecutionError {
     InvalidExecutable(String),
     #[error("executable is not allowed: {0}")]
     ExecutableNotAllowed(String),
+    #[error("required executable is missing: {0}; install it or configure PATH before running this Skill / 缺少执行依赖 {0}，请安装或配置 PATH 后再运行")]
+    DependencyMissing(String),
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
     #[error("invalid path: {0}")]

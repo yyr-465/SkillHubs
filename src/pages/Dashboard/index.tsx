@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Layers, AlertCircle, Radio, Scan, Star, Sparkles, Loader2, Upload, Clock, AlertTriangle } from "lucide-react";
+import { BookOpen, Layers, AlertCircle, Radio, Scan, Star, Sparkles, Loader2, Upload, Clock, AlertTriangle, FolderOpen, X } from "lucide-react";
 import { useSkillStore } from "@/store/skillStore";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "@/i18n";
 import { useNavigate } from "react-router-dom";
+import { useSettingsStore } from "@/store/settingsStore";
 import CategoryBadge from "@/components/CategoryBadge";
 import RiskBadge from "@/components/RiskBadge";
 
@@ -21,11 +22,40 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const [catProgress, setCatProgress] = useState<CategorizeProgress | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initialScanDoneRef = useRef(false);
   const [catError, setCatError] = useState<string | null>(null);
   const [favCount, setFavCount] = useState<number>(0);
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
-  const { stats, isLoading, error, fetchStats, scanSkills, clearError, importSkillsFromJson, recentViews, fetchRecentViews, fetchAllTags, conflictCount, fetchConflictCount } = useSkillStore();
+  const [scanning, setScanning] = useState(false);
+  const { stats, isLoading, error, scanResult, fetchStats, scanSkills, clearError, importSkillsFromJson, recentViews, fetchRecentViews, fetchAllTags, conflictCount, fetchConflictCount } = useSkillStore();
+  const { settings, loaded, loadSettings, updateSetting, saveSettings } = useSettingsStore();
+  const [choosingDirectory, setChoosingDirectory] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) {
+      loadSettings();
+    }
+  }, [loaded, loadSettings]);
+
+  useEffect(() => {
+    if (!loaded || initialScanDoneRef.current) {
+      return;
+    }
+    initialScanDoneRef.current = true;
+    setScanning(true);
+    scanSkills()
+      .then((result) => {
+        if (result.skills.length > 0) {
+          fetchStats();
+          invoke<number>("get_favorites_count").then(setFavCount).catch(() => {});
+        } else {
+          setFavCount(0);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => setScanning(false));
+  }, [loaded, scanSkills, fetchStats]);
 
   useEffect(() => {
     clearError();
@@ -62,9 +92,46 @@ export default function Dashboard() {
   }, [catProgress?.running, fetchConflictCount, fetchStats]);
 
   const handleScan = async () => {
-    await scanSkills();
-    await fetchStats();
-    invoke<number>("get_favorites_count").then(setFavCount).catch(() => {});
+    const startedAt = performance.now();
+    setScanning(true);
+    try {
+      const result = await scanSkills();
+      if (result.skills.length > 0) {
+        await fetchStats();
+        invoke<number>("get_favorites_count").then(setFavCount).catch(() => {});
+        return;
+      }
+      setFavCount(0);
+    } finally {
+      const remainingVisibleMs = Math.max(0, 400 - (performance.now() - startedAt));
+      if (remainingVisibleMs > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remainingVisibleMs));
+      }
+      setScanning(false);
+    }
+  };
+
+  const handleChooseDirectory = async () => {
+    setChoosingDirectory(true);
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({ directory: true, multiple: false });
+      if (typeof selected === "string") {
+        updateSetting("skill_directory", selected);
+        await saveSettings();
+        await handleScan();
+      }
+    } catch {
+      // Native directory selection is unavailable outside the desktop runtime.
+    } finally {
+      setChoosingDirectory(false);
+    }
+  };
+
+  const handleClearDirectory = async () => {
+    updateSetting("skill_directory", null);
+    await saveSettings();
+    await handleScan();
   };
 
   const handleImport = async () => {
@@ -140,14 +207,33 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-xl font-semibold">{t("dashboard.title")}</h1>
           <p className="mt-1 text-sm text-[--color-muted-foreground]">
             {t("dashboard.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 md:justify-end">
+          {settings.skill_directory && (
+            <>
+              <button
+                onClick={handleChooseDirectory}
+                disabled={choosingDirectory}
+                className="inline-flex items-center gap-2 rounded-lg border border-[--color-border] bg-[--color-card] px-4 py-2 text-sm font-medium text-[--color-foreground] transition-colors hover:bg-[--color-accent] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {choosingDirectory ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+                {t("dashboard.changeDirectory")}
+              </button>
+              <button
+                onClick={() => { void handleClearDirectory(); }}
+                className="inline-flex items-center gap-2 rounded-lg border border-[--color-border] px-3 py-2 text-sm text-[--color-muted-foreground] transition-colors hover:bg-[--color-accent]"
+              >
+                <X className="h-4 w-4" />
+                {t("dashboard.clearDirectory")}
+              </button>
+            </>
+          )}
           <button
             onClick={handleImport}
             disabled={importing}
@@ -175,6 +261,13 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {scanning && (
+        <div className="flex items-center gap-2 rounded-lg border border-[--color-primary]/30 bg-[--color-primary]/5 px-4 py-3 text-sm text-[--color-foreground]" role="status" aria-live="polite">
+          <Loader2 className="h-4 w-4 animate-spin text-[--color-primary]" />
+          {t("dashboard.scanning")}
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
@@ -187,6 +280,47 @@ export default function Dashboard() {
         >
           {importMessage}
         </div>
+      )}
+
+      {(!stats || stats.total_count === 0) && (
+        <section className="grid gap-4 rounded-xl border border-[--color-primary]/30 bg-[--color-primary]/5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[--color-primary]">{t("onboarding.step")}</p>
+            <h2 className="text-lg font-semibold text-[--color-foreground]">{settings.skill_directory ? t("onboarding.emptyTitle") : t("onboarding.title")}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[--color-muted-foreground]">{t("onboarding.description")}</p>
+            <p className="mt-2 max-w-2xl text-xs text-[--color-muted-foreground]">{t("onboarding.scope")}</p>
+            {settings.skill_directory && <p className="mt-3 text-xs font-medium text-[--color-primary]">{t("onboarding.directorySelected")}</p>}
+            <button onClick={handleChooseDirectory} disabled={choosingDirectory} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[--color-foreground] bg-[--color-foreground] px-4 py-2 text-sm font-medium text-[--color-background] hover:opacity-90 disabled:opacity-50">
+              {choosingDirectory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scan className="h-4 w-4" />}
+              {settings.skill_directory ? t("onboarding.chooseAgain") : t("onboarding.chooseDirectory")}
+            </button>
+            {settings.skill_directory && <p className="mt-3 text-xs text-[--color-muted-foreground]">{t("onboarding.noSkillsHint")}</p>}
+          </div>
+          <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4 text-[--color-primary]" />
+              <span className="text-[--color-primary]">{t("onboarding.sampleTitle")}</span>
+            </div>
+            <div className="mt-3 rounded-md border border-[--color-border] bg-[--color-background] p-3">
+              <p className="text-sm font-semibold text-[--color-foreground]">{t("onboarding.sampleName")}</p>
+              <p className="mt-1 text-xs text-[--color-muted-foreground]">{t("onboarding.sampleDescription")}</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-[--color-primary]/40 bg-[--color-primary]/10 px-2 py-1 text-[--color-primary]">{t("onboarding.sampleReadOnly")}</span>
+                <span className="rounded-full border border-[--color-primary]/40 bg-[--color-primary]/10 px-2 py-1 text-[--color-primary]">{t("onboarding.sampleNoWrites")}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {scanResult && (
+        <section className="rounded-lg border border-[--color-border] bg-[--color-card] p-4" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-medium">{t("onboarding.scanResult")}</h2>
+            <span className="text-sm font-semibold text-[--color-primary]">{t("onboarding.foundCount").replace("{count}", String(scanResult.skills.length))}</span>
+          </div>
+          {scanResult.errors.length > 0 && <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"><p className="font-medium">{t("onboarding.scanWarnings").replace("{count}", String(scanResult.errors.length))}</p><ul className="mt-1 list-disc pl-4">{scanResult.errors.slice(0, 3).map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}</ul></div>}
+        </section>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -423,6 +557,3 @@ function BreakdownRow({ count, total, badge }: { count: number; total: number; b
 function EmptyDetail({ text }: { text: string }) {
   return <p className="py-6 text-center text-xs text-[--color-muted-foreground]">{text}</p>;
 }
-
-
-

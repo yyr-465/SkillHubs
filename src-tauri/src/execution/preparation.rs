@@ -16,13 +16,21 @@ pub struct ValidatedExecutionRequest {
 pub fn prepare_execution(skill: &Skill) -> Result<Option<ValidatedExecutionRequest>, ExecutionError> {
     let skill_root = PathBuf::from(&skill.source_path);
     let skill_file = skill_root.join("SKILL.md");
-    let front_matter = crate::parser::parse_skill_md(&skill_file).map_err(ExecutionError::InvalidArgument)?;
+    // Never expose the on-disk path: parse failures are reported as a single
+    // path-safe message so the UI never renders an absolute source path.
+    let front_matter = crate::parser::parse_skill_md(&skill_file)
+        .map_err(|_| ExecutionError::InvalidArgument("This Skill's SKILL.md is invalid or unreadable.".into()))?;
     let Some(spec) = front_matter.execution else { return Ok(None); };
     prepare_spec(skill, spec).map(Some)
 }
 
 pub fn prepare_spec(skill: &Skill, spec: ExecutionSpec) -> Result<ValidatedExecutionRequest, ExecutionError> {
     validator::validate_executable(&spec.command)?;
+    let normalized = super::allowlist::normalize_executable_name(&spec.command)?;
+    let lookup_name = if cfg!(target_os = "windows") { normalized.clone() } else { normalized.trim_end_matches(".exe").to_string() };
+    let lookup = if cfg!(target_os = "windows") { "where" } else { "which" };
+    let available = std::process::Command::new(lookup).arg(&lookup_name).output().map(|output| output.status.success()).unwrap_or(false);
+    if !available { return Err(ExecutionError::DependencyMissing(normalized)); }
     validator::validate_args(&spec.args)?;
     validator::validate_timeout(spec.timeout_seconds)?;
 

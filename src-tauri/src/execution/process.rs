@@ -13,6 +13,16 @@ pub struct ProcessResult {
     pub stdout: String,
     pub stderr: String,
     pub exit_code: Option<i32>,
+    pub stdout_truncated: bool,
+    pub stderr_truncated: bool,
+}
+
+const MAX_OUTPUT_BYTES: usize = 16 * 1024;
+
+fn bounded_output(bytes: &[u8]) -> (String, bool) {
+    let truncated = bytes.len() > MAX_OUTPUT_BYTES;
+    let end = bytes.len().min(MAX_OUTPUT_BYTES);
+    (String::from_utf8_lossy(&bytes[..end]).into_owned(), truncated)
 }
 
 pub struct ManagedProcess {
@@ -45,9 +55,11 @@ impl ManagedProcess {
             .await
             .map_err(|error| ExecutionError::ProcessFailed(error.to_string()))?;
         Ok(ProcessResult {
-            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+            stdout: bounded_output(&output.stdout).0,
+            stderr: bounded_output(&output.stderr).0,
             exit_code: output.status.code(),
+            stdout_truncated: output.stdout.len() > MAX_OUTPUT_BYTES,
+            stderr_truncated: output.stderr.len() > MAX_OUTPUT_BYTES,
         })
     }
 

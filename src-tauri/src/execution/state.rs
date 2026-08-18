@@ -22,6 +22,10 @@ pub struct ExecutionRecord {
     pub stdout: String,
     pub stderr: String,
     pub exit_code: Option<i32>,
+    pub stdout_truncated: bool,
+    pub stderr_truncated: bool,
+    #[serde(skip)]
+    pub audit_written: bool,
 }
 
 impl ExecutionRecord {
@@ -52,5 +56,7 @@ impl ExecutionRecord {
         self.exit_code = exit_code;
         self.stdout = stdout;
         self.stderr = stderr;
+        self.stdout_truncated = false;
+        self.stderr_truncated = false;
     }
 }
