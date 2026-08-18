@@ -1,3 +1,4 @@
+mod backup;
 mod db;
 mod export;
 mod models;
@@ -9,16 +10,20 @@ mod tray;
 mod execution;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use models::{ExportCsvRequest, ExportReportRequest, AssignTagRequest, BatchCategorizeRequest, CategorizeProgress, ExecuteSkillRequest, ExecutionPreview, ExecutionResult, FilterOptions, ImportResult, ScanResult, SearchHistoryItem, Skill, SkillContent, SkillPage, SkillQuery, Stats, Tag, ToggleFavoriteRequest, UpdateSkillRequest};
+use models::{ExportCsvRequest, ExportReportRequest, AssignTagRequest, BatchCategorizeRequest, CategorizeProgress, ExecuteSkillRequest, ExecutionPreview, ExecutionResult, FilterOptions, ImportResult, ScanResult, SearchHistoryItem, Skill, SkillContent, SkillPage, SkillQuery, Stats, Tag, ToggleFavoriteRequest, UpdateSkillRequest, EnvironmentDiagnostic};
 use models::{CategorizationEntry, ConflictItem, ResolveConflictsRequest};
+use backup::{RestorePreview, RestoreSummary};
 use settings::AppSettings;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use std::sync::Arc;
 
 /// Wrapper so we can share a rusqlite Connection across threads.
-struct DbState(Mutex<rusqlite::Connection>);
+struct DbState(Arc<Mutex<rusqlite::Connection>>);
 
 /// Wrapper for the categorizer shared state.
 struct CategorizerState(Arc<categorizer::CategorizerState>);
@@ -32,13 +37,109 @@ struct AppState {
 /// Scan all configured skill directories and persist to database.
 #[tauri::command]
 async fn scan_skills(state: tauri::State<'_, DbState>) -> Result<ScanResult, String> {
-    let result = scanner::scan_all();
+    let settings = settings::load_settings();
+    if !probe_writable_path(&db::db_path()) {
+        return Err(database_storage_error(&settings.language));
+    }
+    let result = scanner::scan_all(settings.skill_directory.as_deref());
 
-    let conn = state.0.lock().map_err(|e| e.to_string())?;
-    db::replace_all_skills(&conn, &result.skills)
-        .map_err(|e| format!("DB insert error: {}", e))?;
+    // A missing or unreadable configured directory must not wipe the database:
+    // the existing rows still reflect the last successful scan, and the scan
+    // result already carries the bilingual, path-safe error for the UI.
+    if scanner::directory_is_readable(settings.skill_directory.as_deref()) {
+        let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+        db::replace_all_skills(&mut conn, &result.skills)
+            .map_err(|_| database_storage_error(&settings.language))?;
+    }
 
     Ok(result)
+}
+
+/// Return actionable, path-safe checks used by the first-run diagnostics screen.
+#[tauri::command]
+fn get_environment_diagnostics() -> Vec<EnvironmentDiagnostic> {
+    let settings = settings::load_settings();
+    let mut checks = Vec::new();
+    for executable in ["git.exe", "skill-tool.exe"] {
+        let found = if cfg!(target_os = "windows") {
+            std::process::Command::new("where").arg(executable).output().map(|output| output.status.success()).unwrap_or(false)
+        } else {
+            std::process::Command::new("which").arg(executable.trim_end_matches(".exe")).output().map(|output| output.status.success()).unwrap_or(false)
+        };
+        checks.push(EnvironmentDiagnostic {
+            id: format!("executable-{executable}"),
+            status: if found { "ok".into() } else { "warning".into() },
+            detail: if found {
+                format!("{executable} is available / {executable} 可用")
+            } else {
+                format!("Install or configure {executable} before running Skills / 请先安装或配置 {executable}，再执行 Skill")
+            },
+        });
+    }
+    let directory_status = settings.skill_directory.as_deref().map(std::path::Path::new).map(|path| {
+        if !path.exists() { "missing" } else if !path.is_dir() { "invalid" } else if std::fs::read_dir(path).is_err() { "unreadable" } else { "ok" }
+    }).unwrap_or("unconfigured");
+    checks.push(EnvironmentDiagnostic {
+        id: "skill-directory".into(),
+        status: directory_status.into(),
+        detail: match directory_status {
+            "ok" => "Readable / 可读取".into(),
+            "missing" => "Directory not found; choose another / 目录不存在，请重新选择".into(),
+            "invalid" => "Selected path is not a directory / 所选路径不是目录".into(),
+            "unreadable" => "Directory cannot be read / 目录不可读取".into(),
+            _ => "Choose a Skill directory / 请选择 Skill 目录".into(),
+        },
+    });
+    let db_writable = probe_writable_path(&db::db_path());
+    checks.push(EnvironmentDiagnostic {
+        id: "database".into(),
+        status: if db_writable { "ok".into() } else { "warning".into() },
+        detail: if db_writable {
+            "Writable / 可写".into()
+        } else {
+            "Database storage is not writable / 数据库存储不可写".into()
+        },
+    });
+    let integrity = db::check_database();
+    checks.push(EnvironmentDiagnostic {
+        id: "database-integrity".into(),
+        status: if integrity.status == "ok" { "ok".into() } else { "warning".into() },
+        detail: if integrity.status == "ok" {
+            "Integrity OK / 完整性正常".into()
+        } else {
+            format!("Database integrity: {} / 数据库完整性异常", integrity.status)
+        },
+    });
+    checks.push(EnvironmentDiagnostic { id: "updater".into(), status: "info".into(), detail: "Check from Settings to verify update access / 请在设置中检查更新连接".into() });
+    checks
+}
+
+fn probe_writable_path(path: &std::path::Path) -> bool {
+    if path.exists() {
+        return OpenOptions::new().append(true).open(path).is_ok();
+    }
+    let parent = match path.parent() {
+        Some(parent) if parent.exists() => parent,
+        _ => return false,
+    };
+    let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map(|value| value.as_nanos()).unwrap_or(0);
+    let probe = parent.join(format!(".skillhub-write-probe-{stamp}.tmp"));
+    match OpenOptions::new().create_new(true).write(true).open(&probe) {
+        Ok(mut file) => {
+            let _ = file.write_all(b"probe");
+            let _ = std::fs::remove_file(&probe);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+fn database_storage_error(language: &str) -> String {
+    if language == "zh" {
+        "数据库存储不可写。请检查存储权限或可用磁盘空间，然后重试。".into()
+    } else {
+        "Database storage is not writable. Check storage permissions or available disk space, then try again.".into()
+    }
 }
  
  /// Return the Markdown body content for a skill (without YAML front-matter), read from its SKILL.md file.
@@ -78,6 +179,9 @@ async fn start_skill_execution(
     db_state: tauri::State<'_, DbState>,
     state: tauri::State<'_, AppState>,
 ) -> Result<execution::state::ExecutionRecord, String> {
+    if !request.confirmed {
+        return Err("Explicit user confirmation is required.".to_string());
+    }
     let skill = {
         let conn = db_state.0.lock().map_err(|e| e.to_string())?;
         db::get_skill_by_id(&conn, &request.skill_id).map_err(|e| e.to_string())?
@@ -116,6 +220,7 @@ async fn cancel_skill_execution(
 #[derive(Debug, serde::Deserialize)]
 struct StartSkillExecutionRequest {
     skill_id: String,
+    confirmed: bool,
 }
 
 /// Deprecated: use start_skill_execution instead.
@@ -428,6 +533,65 @@ async fn export_skills_report(
     export::export_report_string(&conn, &request)
 }
 
+// -- Phase 12: Backup, restore, and database health commands --
+
+/// Produce a versioned, secret-free backup of the full database + settings.
+#[tauri::command]
+async fn backup_data(state: tauri::State<'_, DbState>) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let settings = settings::load_settings();
+    backup::create_backup(&conn, &settings)
+}
+
+/// Validate a backup and return a preview without touching the database.
+#[tauri::command]
+async fn preview_restore(json_str: String) -> Result<RestorePreview, String> {
+    backup::preview_restore(&json_str)
+}
+
+/// Restore a validated backup into the database inside a single transaction.
+#[tauri::command]
+async fn restore_data(
+    state: tauri::State<'_, DbState>,
+    json_str: String,
+) -> Result<RestoreSummary, String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    let outcome = backup::restore_backup(&mut conn, &json_str)?;
+
+    let mut settings_restored = false;
+    let mut warnings = outcome.warnings;
+    if let Some(settings_backup) = &outcome.settings {
+        match backup::apply_backup_settings(settings_backup) {
+            Ok(()) => settings_restored = true,
+            Err(e) => warnings.push(format!("Settings were not restored: {e}")),
+        }
+    }
+
+    Ok(RestoreSummary {
+        skills: outcome.skills,
+        tags: outcome.tags,
+        skill_tags: outcome.skill_tags,
+        search_history: outcome.search_history,
+        recent_views: outcome.recent_views,
+        categorization_history: outcome.categorization_history,
+        execution_audit: outcome.execution_audit,
+        settings_restored,
+        warnings,
+    })
+}
+
+/// Run a live integrity check against the on-disk database file.
+#[tauri::command]
+fn verify_database() -> db::DatabaseIntegrity {
+    db::check_database()
+}
+
+/// Return the data directory and database file paths.
+#[tauri::command]
+fn get_data_directory() -> db::DataDirectoryInfo {
+    db::data_directory_info()
+}
+
 // -- Phase 8.2: Tag commands --
 #[tauri::command]
 async fn create_tag(state: tauri::State<'_, DbState>, name: String, color: Option<String>) -> Result<Tag, String> {
@@ -506,14 +670,30 @@ async fn get_categorization_history(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialise the database before starting the app
-    let conn = db::init_db().expect("Failed to initialise SQLite database");
+    // Keep the app available long enough to explain a storage failure. The
+    // in-memory fallback is intentionally non-persistent; commands that need
+    // the normal schema will still fail safely, while Settings can show the
+    // path-safe database diagnostic and the user can fix storage permissions.
+    let conn = match db::init_db() {
+        Ok(conn) => conn,
+        Err(error) => {
+            eprintln!("Database storage is unavailable; using a non-persistent fallback: {error}");
+            // Preserve the raw database file so a corrupt or unreadable file can
+            // still be recovered or inspected rather than silently overwritten.
+            if let Err(preserve_error) = db::preserve_database_file() {
+                eprintln!("Failed to preserve database file: {preserve_error}");
+            }
+            db::init_memory_db()
+                .expect("Failed to create in-memory database fallback")
+        }
+    };
+    let db_state = Arc::new(Mutex::new(conn));
 
     tauri::Builder::default()
         .manage(std::sync::Mutex::new(false))
-        .manage(DbState(Mutex::new(conn)))
+        .manage(DbState(Arc::clone(&db_state)))
         .manage(CategorizerState(Arc::new(categorizer::CategorizerState::new())))
-        .manage(AppState { execution_manager: Arc::new(execution::manager::ExecutionManager::new()) })
+        .manage(AppState { execution_manager: Arc::new(execution::manager::ExecutionManager::with_audit_db(Arc::clone(&db_state))) })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -525,6 +705,7 @@ pub fn run() {
         }).build())
         .invoke_handler(tauri::generate_handler![
             scan_skills,
+            get_environment_diagnostics,
             get_skill_content,
             prepare_skill_execution,
             start_skill_execution,
@@ -568,6 +749,12 @@ pub fn run() {
             get_conflict_count,
             resolve_conflicts,
             get_categorization_history,
+            // Phase 12: Backup, restore, and database health
+            backup_data,
+            preview_restore,
+            restore_data,
+            verify_database,
+            get_data_directory,
         ])
         .setup(|app| {
             tray::init(app)?;

@@ -1,10 +1,52 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useSkillStore } from "@/store/skillStore";
 import { Check, Download, Key, Upload, Loader2 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { THEME_PRESETS, normalizeHex } from "@/lib/theme";
 import { checkForUpdate, downloadUpdate, getCurrentVersion, installUpdate, type UpdateState } from "@/lib/updates";
+
+interface RestorePreview {
+  format: string;
+  version: number;
+  created_at: string;
+  app_version: string;
+  skills: number;
+  tags: number;
+  skill_tags: number;
+  favorites: number;
+  search_history: number;
+  recent_views: number;
+  categorization_history: number;
+  execution_audit: number;
+  has_settings: boolean;
+  warnings: string[];
+}
+
+interface RestoreSummary {
+  skills: number;
+  tags: number;
+  skill_tags: number;
+  search_history: number;
+  recent_views: number;
+  categorization_history: number;
+  execution_audit: number;
+  settings_restored: boolean;
+  warnings: string[];
+}
+
+interface DatabaseIntegrity {
+  status: string;
+  detail: string;
+  schema_version: number;
+  expected_version: number;
+}
+
+interface DataDirectoryInfo {
+  data_directory: string;
+  database_file: string;
+}
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -19,7 +61,7 @@ export default function Settings() {
     cancelThemeChanges,
     clearSavedMessage,
   } = useSettingsStore();
-  const { exportSkillsToJson, importSkillsFromJson, fetchStats } = useSkillStore();
+  const { exportSkillsToJson, importSkillsFromJson, fetchStats, fetchSkills, fetchAllTags, fetchFilters } = useSkillStore();
 
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -29,8 +71,24 @@ export default function Settings() {
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total?: number }>({ downloaded: 0 });
+  const [diagnostics, setDiagnostics] = useState<Array<{ id: string; status: string; detail: string }>>([]);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  const [restoreJson, setRestoreJson] = useState<string | null>(null);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<DatabaseIntegrity | null>(null);
+  const [dataDirInfo, setDataDirInfo] = useState<DataDirectoryInfo | null>(null);
   const msgTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadAttemptRef = useRef(0);
+
+  const getDiagnosticTone = (status: string) => {
+    if (status === "ok") return { label: t("settings.diagnosticsOk"), className: "text-green-600" };
+    if (status === "info") return { label: t("settings.diagnosticsInfo"), className: "text-[--color-muted-foreground]" };
+    return { label: t("settings.diagnosticsWarning"), className: "text-amber-600" };
+  };
 
   useEffect(() => {
     if (!loaded) loadSettings();
@@ -56,6 +114,7 @@ export default function Settings() {
 
   useEffect(() => {
     getCurrentVersion().then(setCurrentVersion);
+    invoke<DataDirectoryInfo>("get_data_directory").then(setDataDirInfo).catch(() => {});
   }, []);
 
   const getUpdateErrorMessage = (state: UpdateState) => {
@@ -76,6 +135,18 @@ export default function Settings() {
       ? `${t("settings.currentVersion")}: ${result.availableVersion ?? ""}`
       : result.status === "not_available" ? t("settings.updateUnavailable") : getUpdateErrorMessage(result));
     setUpdateChecking(false);
+  };
+
+  const handleDiagnostics = async () => {
+    setDiagnosing(true);
+    try {
+      const checks = await invoke<Array<{ id: string; status: string; detail: string }>>("get_environment_diagnostics");
+      const update = await checkForUpdate();
+      checks.push({ id: "updater", status: update.status === "failed" ? "warning" : "ok", detail: update.status === "failed" ? getUpdateErrorMessage(update) : t("settings.updaterReachable") });
+      setDiagnostics(checks);
+    }
+    catch { setDiagnostics([{ id: "diagnostics", status: "warning", detail: t("settings.diagnosticsUnavailable") }]); }
+    finally { setDiagnosing(false); }
   };
 
   const handleDownloadUpdate = async () => {
@@ -110,6 +181,92 @@ export default function Settings() {
     const result = await installUpdate(updateState);
     setUpdateState(result);
     if (result.status === "failed") setUpdateMessage(getUpdateErrorMessage(result));
+  };
+
+  const handleBackup = async () => {
+    setBackupBusy(true);
+    setBackupMessage(null);
+    try {
+      const json = await invoke<string>("backup_data");
+      const date = new Date().toISOString().slice(0, 10);
+      try {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+        const filePath = await save({
+          filters: [{ name: t("dialog.jsonFilter"), extensions: ["json"] }],
+          defaultPath: `skillhub-backup-${date}.json`,
+        });
+        if (filePath) {
+          await writeTextFile(filePath, json);
+          setBackupMessage(t("backup.backupSuccess").replace("{file}", filePath));
+        }
+      } catch {
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `skillhub-backup-${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setBackupMessage(t("backup.backupSuccess").replace("{file}", a.download));
+      }
+    } catch (e) {
+      setBackupMessage(t("backup.backupError").replace("{error}", String(e)));
+    }
+    setBackupBusy(false);
+  };
+
+  const handleChooseBackupFile = async () => {
+    setRestoreBusy(true);
+    setBackupMessage(null);
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const file = await open({ multiple: false, filters: [{ name: t("dialog.jsonFilter"), extensions: ["json"] }] });
+      if (!file) { setRestoreBusy(false); return; }
+      const content = await readTextFile(file as string);
+      const preview = await invoke<RestorePreview>("preview_restore", { jsonStr: content });
+      setRestorePreview(preview);
+      setRestoreJson(content);
+    } catch (e) {
+      setBackupMessage(t("backup.restoreError").replace("{error}", String(e)));
+    }
+    setRestoreBusy(false);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoreJson) return;
+    setRestoreBusy(true);
+    try {
+      const summary = await invoke<RestoreSummary>("restore_data", { jsonStr: restoreJson });
+      const warnings = summary.warnings.length > 0 ? " " + summary.warnings.join(" ") : "";
+      setBackupMessage(
+        t("backup.restoreSuccess")
+          .replace("{skills}", String(summary.skills))
+          .replace("{tags}", String(summary.tags)) + warnings
+      );
+      setRestorePreview(null);
+      setRestoreJson(null);
+      loadSettings();
+      fetchStats();
+      fetchSkills();
+      fetchAllTags();
+      fetchFilters();
+    } catch (e) {
+      setBackupMessage(t("backup.restoreError").replace("{error}", String(e)));
+    }
+    setRestoreBusy(false);
+  };
+
+  const handleVerifyDatabase = async () => {
+    setVerifyBusy(true);
+    try {
+      const result = await invoke<DatabaseIntegrity>("verify_database");
+      setVerifyResult(result);
+    } catch (e) {
+      setVerifyResult({ status: "unavailable", detail: String(e), schema_version: 0, expected_version: 0 });
+    }
+    setVerifyBusy(false);
   };
 
   const handleExportAll = async () => {
@@ -263,6 +420,14 @@ export default function Settings() {
         )}
       </div>
 
+      <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div><h2 className="text-sm font-medium">{t("settings.environmentDiagnostics")}</h2><p className="mt-1 text-xs text-[--color-muted-foreground]">{t("settings.environmentDiagnosticsDesc")}</p></div>
+          <button onClick={handleDiagnostics} disabled={diagnosing} className="rounded-md border border-[--color-border] px-3 py-2 text-sm hover:bg-[--color-accent] disabled:opacity-50">{diagnosing ? t("settings.diagnosticsChecking") : t("settings.runDiagnostics")}</button>
+        </div>
+        {diagnostics.length > 0 && <div className="mt-4 space-y-2">{diagnostics.map((item) => { const tone = getDiagnosticTone(item.status); return <div key={item.id} className="flex items-start justify-between gap-3 rounded-md bg-[--color-muted] px-3 py-2 text-xs"><span className={tone.className}>{tone.label}</span><span className="text-right text-[--color-muted-foreground]">{item.detail}</span></div>; })}</div>}
+      </div>
+
       {/* API Key */}
       <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-6">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -355,13 +520,103 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Backup & Restore */}
+      <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-6">
+        <h2 className="mb-3 text-sm font-medium">{t("backup.title")}</h2>
+        <p className="mb-2 text-xs text-[--color-muted-foreground]">{t("backup.desc")}</p>
+        <p className="mb-4 text-xs text-[--color-muted-foreground]">{t("backup.noSecrets")}</p>
+
+        {dataDirInfo && (
+          <p className="mb-3 break-all rounded-md bg-[--color-muted] px-3 py-2 text-xs text-[--color-muted-foreground]">
+            {t("backup.dataDirectory")}: <span className="font-mono">{dataDirInfo.data_directory}</span>
+          </p>
+        )}
+
+        {backupMessage && (
+          <div className="mb-3 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-400">{backupMessage}</div>
+        )}
+
+        {verifyResult && (
+          <div className={`mb-3 rounded-md border px-3 py-2 text-xs ${verifyResult.status === "ok" ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-amber-500/30 bg-amber-500/10 text-amber-400"}`}>
+            {verifyResult.status === "ok" ? t("backup.databaseOk") : t("backup.databaseProblem").replace("{detail}", verifyResult.detail)}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleBackup}
+            disabled={backupBusy || restoreBusy}
+            className="inline-flex items-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {backupBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {backupBusy ? t("backup.creating") : t("backup.createBackup")}
+          </button>
+          <button
+            onClick={handleChooseBackupFile}
+            disabled={backupBusy || restoreBusy}
+            className="inline-flex items-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {restoreBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {t("backup.restore")}
+          </button>
+          <button
+            onClick={handleVerifyDatabase}
+            disabled={verifyBusy}
+            className="inline-flex items-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {verifyBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {verifyBusy ? t("backup.verifying") : t("backup.verifyDatabase")}
+          </button>
+        </div>
+      </div>
+
+      {/* Restore preview modal */}
+      {restorePreview && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm dark:bg-black/60" onClick={() => setRestorePreview(null)} />
+          <div className="relative z-10 flex max-h-[90vh] w-full max-w-md flex-col rounded-lg border border-[--color-border] bg-[--color-card] p-6 shadow-xl">
+            <h3 className="mb-1 text-base font-semibold text-[--color-foreground]">{t("backup.previewTitle")}</h3>
+            <p className="mb-4 text-xs text-[--color-muted-foreground]">
+              {t("backup.previewFormat")}: {restorePreview.format} · {t("backup.previewVersion")}: {restorePreview.version} · {t("backup.previewAppVersion")}: {restorePreview.app_version}
+            </p>
+            <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <PreviewRow label={t("backup.previewSkills")} value={restorePreview.skills} />
+              <PreviewRow label={t("backup.previewTags")} value={restorePreview.tags} />
+              <PreviewRow label={t("backup.previewAssociations")} value={restorePreview.skill_tags} />
+              <PreviewRow label={t("backup.previewFavorites")} value={restorePreview.favorites} />
+              <PreviewRow label={t("backup.previewSettings")} value={restorePreview.has_settings ? 1 : 0} />
+              <PreviewRow label={t("backup.previewSearchHistory")} value={restorePreview.search_history} />
+              <PreviewRow label={t("backup.previewRecentViews")} value={restorePreview.recent_views} />
+              <PreviewRow label={t("backup.previewCategorization")} value={restorePreview.categorization_history} />
+              <PreviewRow label={t("backup.previewAudit")} value={restorePreview.execution_audit} />
+            </div>
+            {restorePreview.warnings.length > 0 && (
+              <div className="mb-4 max-h-32 overflow-y-auto rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                {restorePreview.warnings.map((w, i) => (
+                  <p key={i}>{t("backup.previewWarning")}: {w}</p>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-3 border-t border-[--color-border] pt-4">
+              <button onClick={() => setRestorePreview(null)} disabled={restoreBusy} className="rounded-md border border-[--color-border] px-4 py-2 text-sm text-[--color-muted-foreground] hover:bg-[--color-accent] disabled:opacity-50">
+                {t("backup.cancel")}
+              </button>
+              <button onClick={handleConfirmRestore} disabled={restoreBusy} className="inline-flex items-center gap-1.5 rounded-md bg-[--color-primary] px-4 py-2 text-sm font-medium text-[--color-primary-foreground] hover:opacity-90 disabled:opacity-50">
+                {restoreBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {t("backup.confirmRestore")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Save */}
       <div className="flex items-center justify-between">
         <button
           onClick={cancelThemeChanges}
           className="rounded-lg border border-[--color-border] px-5 py-2 text-sm text-[--color-foreground] transition-colors hover:bg-[--color-accent]"
         >
-          Cancel
+          {t("skillEditor.cancel")}
         </button>
         <button
           onClick={saveSettings}
@@ -373,6 +628,15 @@ export default function Settings() {
           <span className="text-sm text-green-500">{t("settings.saved")}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+function PreviewRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[--color-muted-foreground]">{label}</span>
+      <span className="font-medium text-[--color-foreground]">{value}</span>
     </div>
   );
 }

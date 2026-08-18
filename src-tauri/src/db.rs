@@ -1,9 +1,13 @@
-﻿/* FORCE_RECOMPILE */
+/* FORCE_RECOMPILE */
 use crate::models::{BatchCategorizeRequest, CategoryCount, FilterOptionWithCount, FilterOptions, ImportResult, RiskCount, SearchHistoryItem, Skill, SkillContent, SkillExportWrapper, SkillPage, SkillQuery, SortDirection, SortField, Stats, Tag, UpdateSkillRequest};
 use rusqlite::{params, Connection, Result as SqlResult};
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::fs;
+
+/// Current on-disk schema version, tracked via PRAGMA user_version.
+/// Bump this whenever the migration set changes.
+pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
 /// Path to the SQLite database file under C:\Users\DELL/.skillhub/skills.db
 pub(crate) fn db_path() -> PathBuf {
@@ -26,9 +30,198 @@ fn dirs_next() -> Option<PathBuf> {
 }
 
 /// Open or create the database and ensure the schema exists.
-pub fn init_db() -> SqlResult<Connection> {
+///
+/// Before migrating an existing database we copy the raw file aside so a
+/// failed migration can always be recovered. Corruption is detected up front
+/// and reported as an Err rather than silently opening a broken file.
+pub fn init_db() -> Result<Connection, String> {
     let path = db_path();
-    let conn = Connection::open(&path)?;
+    ensure_pre_migration_backup(&path);
+    let conn = Connection::open(&path).map_err(|e| format!("Could not open database: {e}"))?;
+
+    let version = read_user_version(&conn).map_err(|e| e.to_string())?;
+    if version > CURRENT_SCHEMA_VERSION {
+        return Err(format!(
+            "Database schema version {version} is newer than this app supports ({CURRENT_SCHEMA_VERSION})."
+        ));
+    }
+
+    verify_integrity(&conn)?;
+
+    init_schema(conn).map_err(|e| format!("Database migration failed: {e}"))
+}
+
+/// Create a fully usable non-persistent database for diagnostics mode.
+pub fn init_memory_db() -> SqlResult<Connection> {
+    let conn = Connection::open_in_memory()?;
+    init_schema(conn)
+}
+
+fn read_user_version(conn: &Connection) -> SqlResult<i64> {
+    conn.query_row("PRAGMA user_version", [], |r| r.get(0))
+}
+
+/// Return the rows of PRAGMA integrity_check joined into one string.
+pub fn integrity_report(conn: &Connection) -> Result<String, String> {
+    let mut stmt = conn.prepare("PRAGMA integrity_check").map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out.join("\n"))
+}
+
+/// Fail with a descriptive message unless the database passes integrity_check.
+pub fn verify_integrity(conn: &Connection) -> Result<(), String> {
+    let report = integrity_report(conn)?;
+    if report.trim() == "ok" {
+        Ok(())
+    } else {
+        Err(format!("database integrity check failed: {report}"))
+    }
+}
+
+/// Copy the raw database file aside before any migration or repair attempt.
+/// Only copies when the file is non-empty and its schema version differs from
+/// the current version (i.e. a migration is about to run), or when the version
+/// cannot be read at all (a possible sign of corruption).
+pub(crate) fn ensure_pre_migration_backup(path: &Path) {
+    if !path.exists() {
+        return;
+    }
+    let len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    if len == 0 {
+        return;
+    }
+    let needs_backup = match Connection::open(path).and_then(|c| read_user_version(&c)) {
+        Ok(version) => version != CURRENT_SCHEMA_VERSION,
+        Err(_) => true,
+    };
+    if needs_backup {
+        let ts = unix_seconds();
+        let dst = path.with_file_name(format!("skills.db.pre-migrate-{ts}.bak"));
+        let _ = fs::copy(path, &dst);
+    }
+}
+
+/// Preserve the raw database file (used when startup detects a corrupt or
+/// unreadable database so the file is not lost during the memory fallback).
+pub fn preserve_database_file() -> Result<(), String> {
+    preserve_database_file_at(&db_path())
+}
+
+pub fn preserve_database_file_at(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    if len == 0 {
+        return Ok(());
+    }
+    let dst = path.with_file_name(format!("skills.db.corrupt-{}.bak", unix_seconds()));
+    fs::copy(path, &dst).map(|_| ()).map_err(|e| e.to_string())
+}
+
+fn unix_seconds() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// The directory that holds the database and settings (the app data directory).
+pub fn data_directory() -> String {
+    let home = dirs_next().unwrap_or_else(|| PathBuf::from("."));
+    let dir = home.join(".skillhub");
+    let _ = std::fs::create_dir_all(&dir);
+    dir.to_string_lossy().to_string()
+}
+
+/// Absolute path to the SQLite database file.
+pub fn database_file_path() -> String {
+    db_path().to_string_lossy().to_string()
+}
+
+/// Structured, path-safe integrity report for the Settings screen.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DatabaseIntegrity {
+    pub status: String,
+    pub detail: String,
+    pub schema_version: i64,
+    pub expected_version: i64,
+}
+
+/// Data directory + database file paths for the Settings screen.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DataDirectoryInfo {
+    pub data_directory: String,
+    pub database_file: String,
+}
+
+pub fn data_directory_info() -> DataDirectoryInfo {
+    DataDirectoryInfo {
+        data_directory: data_directory(),
+        database_file: database_file_path(),
+    }
+}
+
+pub fn check_database() -> DatabaseIntegrity {
+    let path = db_path();
+    if !path.exists() {
+        return DatabaseIntegrity {
+            status: "missing".into(),
+            detail: "Database file has not been created yet.".into(),
+            schema_version: 0,
+            expected_version: CURRENT_SCHEMA_VERSION,
+        };
+    }
+    match Connection::open(&path) {
+        Ok(conn) => {
+            let version = read_user_version(&conn).unwrap_or(0);
+            if version > CURRENT_SCHEMA_VERSION {
+                return DatabaseIntegrity {
+                    status: "newer-version".into(),
+                    detail: format!(
+                        "Database schema version {version} is newer than supported ({CURRENT_SCHEMA_VERSION})."
+                    ),
+                    schema_version: version,
+                    expected_version: CURRENT_SCHEMA_VERSION,
+                };
+            }
+            match integrity_report(&conn) {
+                Ok(report) if report.trim() == "ok" => DatabaseIntegrity {
+                    status: "ok".into(),
+                    detail: "Database integrity check passed.".into(),
+                    schema_version: version,
+                    expected_version: CURRENT_SCHEMA_VERSION,
+                },
+                Ok(report) => DatabaseIntegrity {
+                    status: "corrupt".into(),
+                    detail: report,
+                    schema_version: version,
+                    expected_version: CURRENT_SCHEMA_VERSION,
+                },
+                Err(e) => DatabaseIntegrity {
+                    status: "unavailable".into(),
+                    detail: e,
+                    schema_version: version,
+                    expected_version: CURRENT_SCHEMA_VERSION,
+                },
+            }
+        }
+        Err(e) => DatabaseIntegrity {
+            status: "unavailable".into(),
+            detail: e.to_string(),
+            schema_version: 0,
+            expected_version: CURRENT_SCHEMA_VERSION,
+        },
+    }
+}
+
+fn init_schema(conn: Connection) -> SqlResult<Connection> {
 
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS skills (
@@ -187,6 +380,8 @@ pub fn init_db() -> SqlResult<Connection> {
         [],
     )?;
 
+    conn.pragma_update(None, "user_version", CURRENT_SCHEMA_VERSION)?;
+
     Ok(conn)
 }
 
@@ -223,8 +418,10 @@ pub fn replace_all_skills(conn: &Connection, skills: &[Skill]) -> SqlResult<()> 
         .collect::<SqlResult<Vec<String>>>()?;
 
     let mut del_stmt = conn.prepare("DELETE FROM skills WHERE id = ?1")?;
+    let mut recent_views_del_stmt = conn.prepare("DELETE FROM recent_views WHERE skill_id = ?1")?;
     for id in &existing_ids {
         if !scanned_ids.contains(id.as_str()) {
+            recent_views_del_stmt.execute(params![id])?;
             del_stmt.execute(params![id])?;
         }
     }
@@ -831,7 +1028,7 @@ pub fn get_filters(conn: &Connection) -> SqlResult<FilterOptions> {
 
 /// Helper: map a SQLite row to a Skill.
 /// Row layout: id(0), name(1), description(2), category(3), risk(4), date_added(5), source_path(6), source(7), favorite(8), icon(9)
-fn row_to_skill(row: &rusqlite::Row) -> SqlResult<Skill> {
+pub(crate) fn row_to_skill(row: &rusqlite::Row) -> SqlResult<Skill> {
     let favorite = row.get::<_, Option<bool>>(8).unwrap_or(None).or(Some(false));
     Ok(Skill {
         id: row.get(0)?,
@@ -1151,6 +1348,14 @@ mod tests {
             );
             CREATE INDEX idx_categorization_history_skill_order
             ON categorization_history(skill_id, created_at DESC, id DESC);",
+        )
+        .unwrap();
+        conn.execute_batch(
+            "CREATE TABLE recent_views (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                skill_id TEXT NOT NULL REFERENCES skills(id),
+                viewed_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+            );"
         )
         .unwrap();
         // FTS5 virtual table for test (data populated by replace_all_skills/>rebuild_fts_index)
@@ -1566,6 +1771,94 @@ mod tests {
         let history_started = std::time::Instant::now();
         assert_eq!(get_categorization_history(&conn, "skill-4999").unwrap().len(), 2);
         assert!(history_started.elapsed().as_millis() < 100);
+    }
+
+    #[test]
+    fn test_representative_5000_skill_search_filter_tags() {
+        let mut conn = crate::db::init_memory_db().unwrap();
+        let categories = ["dev", "data", "design", "writing", "security"];
+
+        let dev_tag = create_tag(&conn, "dev-tag", "#3b82f6").unwrap();
+        let data_tag = create_tag(&conn, "data-tag", "#10b981").unwrap();
+
+        {
+            let tx = conn.transaction().unwrap();
+            for index in 0..5_000 {
+                let cat = categories[index % categories.len()];
+                let id = format!("skill-{index}");
+                tx.execute(
+                    "INSERT INTO skills (id, name, description, category, source_path, favorite) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    params![
+                        id,
+                        format!("Skill {index}"),
+                        format!("A {cat} skill for representative testing"),
+                        cat,
+                        format!("/tmp/skill-{index}"),
+                        (index % 50 == 0) as i64,
+                    ],
+                )
+                .unwrap();
+                if cat == "dev" {
+                    tx.execute("INSERT INTO skill_tags (skill_id, tag_id) VALUES (?1, ?2)", params![id, dev_tag.id])
+                        .unwrap();
+                } else if cat == "data" {
+                    tx.execute("INSERT INTO skill_tags (skill_id, tag_id) VALUES (?1, ?2)", params![id, data_tag.id])
+                        .unwrap();
+                }
+            }
+            tx.commit().unwrap();
+        }
+        rebuild_fts_index(&conn).unwrap();
+
+        let base = || SkillQuery {
+            search: None,
+            category: None,
+            risk: None,
+            source: None,
+            sort_field: None,
+            sort_direction: None,
+            offset: None,
+            limit: None,
+            favorite_only: None,
+            tag_ids: None,
+        };
+
+        // Category filter.
+        let started = std::time::Instant::now();
+        let page = query_skills(&conn, &SkillQuery { category: Some("dev".into()), ..base() }).unwrap();
+        assert_eq!(page.total_count, 1_000);
+        assert!(started.elapsed().as_millis() < 500, "category filter too slow");
+
+        // Tag filter.
+        let page = query_skills(&conn, &SkillQuery { tag_ids: Some(vec![dev_tag.id]), ..base() }).unwrap();
+        assert_eq!(page.total_count, 1_000);
+        let page = query_skills(&conn, &SkillQuery { tag_ids: Some(vec![data_tag.id]), ..base() }).unwrap();
+        assert_eq!(page.total_count, 1_000);
+
+        // Favorite-only filter (every 50th skill).
+        let page = query_skills(&conn, &SkillQuery { favorite_only: Some(true), ..base() }).unwrap();
+        assert_eq!(page.total_count, 100);
+
+        // FTS5 search: common term matches every skill.
+        let page = query_skills(&conn, &SkillQuery { search: Some("representative".into()), ..base() }).unwrap();
+        assert_eq!(page.total_count, 5_000);
+
+        // FTS5 search: category-specific term.
+        let page = query_skills(&conn, &SkillQuery { search: Some("security".into()), ..base() }).unwrap();
+        assert_eq!(page.total_count, 1_000);
+
+        // Combined search + category.
+        let page = query_skills(
+            &conn,
+            &SkillQuery { search: Some("security".into()), category: Some("security".into()), ..base() },
+        )
+        .unwrap();
+        assert_eq!(page.total_count, 1_000);
+
+        // Pagination: page size is respected, total_count stays full.
+        let page = query_skills(&conn, &SkillQuery { limit: Some(10), ..base() }).unwrap();
+        assert_eq!(page.skills.len(), 10);
+        assert_eq!(page.total_count, 5_000);
     }
 }
 

@@ -100,6 +100,13 @@ pub struct ScanResult {
     pub errors: Vec<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EnvironmentDiagnostic {
+    pub id: String,
+    pub status: String,
+    pub detail: String,
+}
+
 /// Paginated skills result with total count
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkillPage {
