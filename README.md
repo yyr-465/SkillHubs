@@ -4,7 +4,11 @@ SkillHub is an open-source Windows desktop application for discovering, organizi
 
 It scans user-selected directories for `SKILL.md` files and builds a local catalog with categories, tags, favorites, full-text search, recent history, import/export, and optional AI-assisted categorization.
 
-> **Release status:** SkillHub is currently pre-1.0 software. Existing public installers are updater-signed but are not yet Authenticode-signed. The production signing and release gate must be completed before the installers are presented as a trusted public release.
+## Try it online
+
+A free, read-only **Web edition** of the Skill catalogue is live at **<https://yyr-465.github.io/SkillHubs/>**. Browse, search, view details, and share example Skills in your browser with English/Chinese and light/dark themes — no account, no API key, and nothing is uploaded. The Web edition serves a static catalogue of example Skills; local scanning, dependency checks, and safe execution remain desktop-only.
+
+> **Release status:** SkillHub is currently pre-1.0 software. Existing public installers are updater-signed but are not yet Authenticode-signed. The production signing and release gate must be completed before the installers are presented as a trusted public release. Since 2026-08-17 the free Web edition above is live; the desktop 1.0.0 public release remains gated on production code signing (see [Code signing policy](#code-signing-policy)).
 
 ## Features
 
@@ -91,6 +95,30 @@ Build a visibly labeled unsigned local QA installer without production updater m
 ```powershell
 pnpm run tauri:build:qa
 ```
+
+## Web edition (build & deploy)
+
+The Web edition is a static build of the same frontend. Its catalogue is generated from committed sources under `web-catalog/skills/<id>/SKILL.md`:
+
+```powershell
+node scripts/generate-catalog.mjs   # writes public/catalog/index.json + public/catalog/skills/<id>.md
+pnpm run build                      # vite output to dist/
+```
+
+Preview locally (`scripts/serve-web.py` serves `.js` with the correct MIME type, unlike a plain `python -m http.server`):
+
+```powershell
+pnpm preview
+# or: python scripts/serve-web.py
+```
+
+Deployment is automatic: pushing to `main` triggers `.github/workflows/pages.yml`, which requires the GitHub Pages source to be set to "GitHub Actions". A manual fallback builds locally and force-pushes `dist/` to the `gh-pages` branch:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1
+```
+
+See [WEB.md](WEB.md) for the Web edition's scope, data source, and security notes.
 
 ## Code signing policy
 
