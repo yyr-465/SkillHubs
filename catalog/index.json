@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-08-17T15:03:30.505Z",
+  "count": 8,
+  "skills": [
+    {
+      "id": "api-design-review",
+      "name": "API Design Review",
+      "description": "Review an API surface for consistency, versioning, errors, and security posture.",
+      "category": "api-integration",
+      "risk": "medium",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "🔌"
+    },
+    {
+      "id": "code-review-checklist",
+      "name": "Code Review Checklist",
+      "description": "A bilingual checklist for reviewing pull requests with empathy and rigor.",
+      "category": "development",
+      "risk": "low",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" width=\"24\" height=\"24\"><rect width=\"24\" height=\"24\" rx=\"5\" fill=\"#6366f1\"/><path d=\"M7 12l3 3 7-7\" stroke=\"#fff\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+    },
+    {
+      "id": "commit-message-crafter",
+      "name": "Commit Message Crafter",
+      "description": "Write clear, conventional commit messages that are easy to scan and automate.",
+      "category": "development",
+      "risk": "safe",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "✍️"
+    },
+    {
+      "id": "data-sanitizer",
+      "name": "Data Sanitizer",
+      "description": "Validate and sanitize untrusted input before it reaches storage, queries, or rendering.",
+      "category": "security",
+      "risk": "medium",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "🛡️"
+    },
+    {
+      "id": "incident-response-runbook",
+      "name": "Incident Response Runbook",
+      "description": "A high-level runbook for triaging and containing a security incident without making it worse.",
+      "category": "security",
+      "risk": "critical",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "🚨"
+    },
+    {
+      "id": "markdown-to-html",
+      "name": "Markdown to HTML",
+      "description": "Convert Markdown documents into safe, sanitized HTML with configurable headings and code highlighting.",
+      "category": "development",
+      "risk": "low",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "📄"
+    },
+    {
+      "id": "seo-audit-checklist",
+      "name": "SEO Audit Checklist",
+      "description": "A repeatable checklist for auditing a page's technical and content SEO basics.",
+      "category": "seo",
+      "risk": "low",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "🔍"
+    },
+    {
+      "id": "sql-query-builder",
+      "name": "SQL Query Builder",
+      "description": "Draft readable, parameterized SQL queries for common reporting and lookup patterns.",
+      "category": "data",
+      "risk": "low",
+      "date_added": null,
+      "source_path": "",
+      "source": "catalog",
+      "favorite": false,
+      "icon": "🗄️"
+    }
+  ]
+}
