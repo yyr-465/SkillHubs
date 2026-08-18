@@ -73,8 +73,11 @@ export default function VirtualSkillList({ skills, viewMode, onScrollReset }: Vi
             key={row.key}
             ref={virtualizer.measureElement}
             data-index={row.index}
-            className={viewMode === "grid" ? "absolute left-0 top-0 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "absolute left-0 top-0 flex w-full flex-col gap-2"}
-            style={{ transform: `translateY(${row.start}px)` }}
+            className={viewMode === "grid" ? "absolute left-0 top-0 grid w-full gap-3" : "absolute left-0 top-0 flex w-full flex-col gap-2"}
+            style={{
+              transform: `translateY(${row.start}px)`,
+              gridTemplateColumns: viewMode === "grid" ? `repeat(${columns}, minmax(0, 1fr))` : undefined,
+            }}
           >
             {rows[row.index].map((skill) => <SkillCard key={skill.id} skill={skill} />)}
           </div>

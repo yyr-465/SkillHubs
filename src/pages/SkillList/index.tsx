@@ -8,9 +8,12 @@ import SortDropdown from "@/components/SortDropdown";
 import ViewToggle from "@/components/ViewToggle";
 import Pagination from "@/components/Pagination";
 import VirtualSkillList from "@/components/VirtualSkillList";
+import SkillGrid from "@/components/SkillGrid";
 import BatchOperationBar from "@/components/BatchOperationBar";
 import EmptyState from "@/components/EmptyState";
+import LoadLocalSkills from "@/components/LoadLocalSkills";
 import { CheckSquare, Loader2, ListChecks, RotateCcw } from "lucide-react";
+import { IS_TAURI } from "@/lib/runtime";
 
 const VALID_FAVORITE_PARAM = "true";
 
@@ -61,7 +64,8 @@ export default function SkillList() {
     fetchFilters();
   }, [fetchFilters]);
 
-  const virtualEnabled = localStorage.getItem("skillhub_virtual_list") !== "false";
+  // Web always fetches the full list; virtualisation is desktop-only.
+  const virtualEnabled = IS_TAURI ? localStorage.getItem("skillhub_virtual_list") !== "false" : true;
 
   useEffect(() => {
     querySkills({
@@ -85,6 +89,12 @@ export default function SkillList() {
           </p>
         </div>
 
+        {!IS_TAURI && (
+          <div className="mt-3">
+            <LoadLocalSkills />
+          </div>
+        )}
+
         {/* Row 1: Search + Clear Sort */}
         <div className="mt-3 flex items-center gap-2">
           <div className="flex-1 max-w-md">
@@ -106,6 +116,7 @@ export default function SkillList() {
           <FilterBar />
           <div className="flex items-center gap-2">
             <SortDropdown />
+            {IS_TAURI && (
             <button
               onClick={() => {
                 if (selectionMode) clearSelection();
@@ -120,6 +131,7 @@ export default function SkillList() {
             >
               <ListChecks className="h-3.5 w-3.5" />
             </button>
+            )}
           </div>
           <div className="ml-auto pl-4 border-l border-[--color-border]">
             <ViewToggle />
@@ -157,11 +169,15 @@ export default function SkillList() {
           </div>
         )}
 
-        {!isLoading && skills.length > 0 && virtualEnabled && (
+        {!isLoading && skills.length > 0 && IS_TAURI && virtualEnabled && (
           <VirtualSkillList key={`${viewMode}:${JSON.stringify(skillQuery)}`} skills={skills} viewMode={viewMode} />
         )}
 
-        {!isLoading && skills.length > 0 && !virtualEnabled && <Pagination />}
+        {!isLoading && skills.length > 0 && IS_TAURI && !virtualEnabled && <Pagination />}
+
+        {!isLoading && skills.length > 0 && !IS_TAURI && (
+          <SkillGrid skills={skills} viewMode={viewMode} />
+        )}
 
         {!isLoading && skills.length === 0 && !error && (
           <EmptyState
@@ -174,8 +190,8 @@ export default function SkillList() {
         )}
       </div>
 
-      {/* Batch operation bar */}
-      {selectionMode && <BatchOperationBar />}
+      {/* Batch operation bar (desktop only) */}
+      {IS_TAURI && selectionMode && <BatchOperationBar />}
     </>
   );
 }

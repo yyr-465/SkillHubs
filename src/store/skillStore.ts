@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/runtime";
 
 // -- Type definitions mirroring the Rust backend --
 
@@ -175,6 +175,8 @@ export interface ExecutionRecord {
   stdout: string;
   stderr: string;
   exit_code: number | null;
+  stdout_truncated: boolean;
+  stderr_truncated: boolean;
 }
 
 // -- View mode --
@@ -253,7 +255,7 @@ interface SkillStore {
   fetchSkillById: (id: string) => Promise<void>;
   fetchSkillContent: (id: string) => Promise<void>;
   searchSkills: (query: string) => Promise<void>;
-  scanSkills: () => Promise<void>;
+  scanSkills: () => Promise<ScanResult>;
   fetchStats: () => Promise<void>;
 
   // Phase 3 actions
@@ -423,10 +425,16 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
       set({
         skills: result.skills,
         scanResult: result,
+        stats: result.skills.length === 0 ? EMPTY_STATS : get().stats,
+        totalCount: result.skills.length,
+        currentPage: 1,
+        recentViews: result.skills.length === 0 ? [] : get().recentViews,
         isLoading: false,
       });
+      return result;
     } catch (e) {
       set({ error: String(e), isLoading: false });
+      throw e;
     }
   },
 
@@ -786,7 +794,7 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
 
   startExecution: async (skillId: string) => {
     try {
-      const record = await invoke<ExecutionRecord>("start_skill_execution", { request: { skill_id: skillId } });
+        const record = await invoke<ExecutionRecord>("start_skill_execution", { request: { skill_id: skillId, confirmed: true } });
       set({ executionUIState: "running", executionId: record.execution_id, executionStatus: record.status, executionResult: record, executionError: null, executionStartedAt: Date.now() });
       return record;
     } catch (e) {

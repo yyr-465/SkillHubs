@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, FileText, FolderOpen, Globe, Loader2, Pencil, Calendar, History, Bot, User, Play } from "lucide-react";
+import { ArrowLeft, FileText, FolderOpen, Globe, Loader2, Pencil, Calendar, History, Bot, User, Play, Share2, Check, ShieldCheck } from "lucide-react";
 import { useSkillStore } from "@/store/skillStore";
 import { useTranslation } from "@/i18n";
 import CategoryBadge from "@/components/CategoryBadge";
@@ -16,6 +16,7 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { Components } from "react-markdown";
+import { IS_TAURI } from "@/lib/runtime";
 
 export default function SkillDetail() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export default function SkillDetail() {
   const { id } = useParams<{ id: string }>();
   const [showTagManager, setShowTagManager] = useState(false);
   const [showExecutionPanel, setShowExecutionPanel] = useState(false);
+  const [copied, setCopied] = useState(false);
   const {
     selectedSkill: skill,
     isLoading,
@@ -82,6 +84,27 @@ export default function SkillDetail() {
     void prepareExecution(skill.id);
   };
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      try {
+        const input = document.createElement("input");
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+        setCopied(true);
+      } catch {
+        // Clipboard unavailable; the URL remains in the address bar.
+      }
+    }
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <StickyBackLink label={t("skillDetail.back")} />
@@ -94,8 +117,17 @@ export default function SkillDetail() {
                 <div className="flex items-center gap-3">
                   <h1 className="text-xl font-semibold">{skill.name}</h1>
                   <FavoriteButton skillId={skill.id} favorite={skill.favorite} size="md" />
-                  <button onClick={() => openEditDialog(skill)} className="rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("skillList.edit")}><Pencil className="h-4 w-4" /></button>
-                  <button onClick={handleExecute} className="rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("skillDetail.execute")}><Play className="h-4 w-4" /></button>
+                  {IS_TAURI && (
+                    <button onClick={() => openEditDialog(skill)} className="rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("skillList.edit")}><Pencil className="h-4 w-4" /></button>
+                  )}
+                  {IS_TAURI && (
+                    <button onClick={handleExecute} className="rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("skillDetail.execute")}><Play className="h-4 w-4" /></button>
+                  )}
+                  {!IS_TAURI && (
+                    <button onClick={handleShare} className="inline-flex items-center gap-1.5 rounded-md p-1.5 text-[--color-muted-foreground] transition-colors hover:text-[--color-foreground] hover:bg-[--color-accent]" title={t("web.share")}>
+                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Share2 className="h-4 w-4" />}
+                    </button>
+                  )}
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-[--color-muted-foreground]">{skill.description || t("skillDetail.noDescription")}</p>
               </div>
@@ -108,6 +140,17 @@ export default function SkillDetail() {
         </div>
       </div>
 
+      {!IS_TAURI && (
+        <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-4">
+          <h3 className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-[--color-muted-foreground]">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {t("web.safetyNote")}
+          </h3>
+          <p className="text-xs leading-relaxed text-[--color-muted-foreground]">{t("web.readOnly")}</p>
+        </div>
+      )}
+
+      {IS_TAURI && (
       <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-medium text-[--color-muted-foreground] uppercase tracking-wider">{t("skillDetail.tags")}</h3>
@@ -121,6 +164,7 @@ export default function SkillDetail() {
           <p className="text-xs text-[--color-muted-foreground]">{t("tagManager.noTags")}</p>
         )}
       </div>
+      )}
 
       {categorizationHistory.length > 0 && (
         <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-4">
@@ -164,10 +208,12 @@ export default function SkillDetail() {
         </div>
       )}
 
+      {IS_TAURI && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <InfoCard icon={FolderOpen} label={t("skillDetail.source")} value={sourceLabel} />
-        <InfoCard icon={Globe} label={t("skillDetail.sourcePath")} value={skill.source_path} />
+        <InfoCard icon={Globe} label={t("skillDetail.sourceScope")} value={t("skillDetail.configuredDirectory")} />
       </div>
+      )}
 
       <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -199,8 +245,8 @@ export default function SkillDetail() {
         )}
       </div>
 
-      {editSkill?.id === skill.id && (<SkillEditor skill={editSkill} open={editDialogOpen} onClose={closeEditDialog} />)}
-      {showTagManager && id && (
+      {IS_TAURI && editSkill?.id === skill.id && (<SkillEditor skill={editSkill} open={editDialogOpen} onClose={closeEditDialog} />)}
+      {IS_TAURI && showTagManager && id && (
         <TagManager
           skillId={id}
           skillTags={skillTags}
@@ -212,7 +258,7 @@ export default function SkillDetail() {
           onClose={() => setShowTagManager(false)}
         />
       )}
-      {showExecutionPanel && (
+      {IS_TAURI && showExecutionPanel && (
         <ExecutionPanel skillId={skill.id} onClose={() => setShowExecutionPanel(false)} />
       )}
     </div>

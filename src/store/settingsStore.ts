@@ -1,5 +1,5 @@
-﻿import { create } from "zustand";
-import { invoke } from "@tauri-apps/api/core";
+import { create } from "zustand";
+import { invoke } from "@/lib/runtime";
 import type { LangCode } from "@/i18n";
 import { setCurrentLang } from "@/i18n";
 import { contrastRatio, foregroundFor, normalizeHex } from "@/lib/theme";
@@ -13,6 +13,7 @@ export interface AppSettings {
   custom_primary: string;
   custom_background: string;
   minimize_to_tray: boolean;
+  skill_directory: string | null;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   custom_primary: "#6366f1",
   custom_background: "#0f0f0f",
   minimize_to_tray: true,
+  skill_directory: null,
 };
 
 // ── Store ───────────────────────────────────────────────────────

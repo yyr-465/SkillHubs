@@ -1,4 +1,4 @@
-﻿import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSkillStore } from "@/store/skillStore";
 import type { Skill } from "@/store/skillStore";
 import CategoryBadge from "@/components/CategoryBadge";
@@ -8,6 +8,7 @@ import SkillIcon from "@/components/SkillIcon";
 import { Calendar, Pencil, CheckSquare, Square } from "lucide-react";
 import SkillEditor from "@/components/SkillEditor";
 import { highlightText } from "@/lib/utils";
+import { IS_TAURI } from "@/lib/runtime";
 
 interface SkillCardProps {
   skill: Skill;
@@ -79,7 +80,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
           <span className="shrink-0 text-[10px] uppercase tracking-wider text-[--color-muted-foreground]">
             {skill.source}
           </span>
-          {!selectionMode && (
+          {IS_TAURI && !selectionMode && (
             <button
               onClick={handleEdit}
               className="shrink-0 rounded p-1 text-[--color-muted-foreground] opacity-0 transition-opacity hover:text-[--color-foreground] group-hover:opacity-100"
@@ -88,7 +89,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
             </button>
           )}
         </div>
-        {editSkill?.id === skill.id && (
+        {IS_TAURI && editSkill?.id === skill.id && (
           <SkillEditor
             skill={editSkill}
             open={editDialogOpen}
@@ -129,7 +130,7 @@ export default function SkillCard({ skill }: SkillCardProps) {
           </div>
         )}
 
-        {!selectionMode && (
+        {IS_TAURI && !selectionMode && (
           <button
             onClick={handleEdit}
             className="absolute right-2 top-2 z-10 rounded p-1 text-[--color-muted-foreground] opacity-0 transition-opacity hover:text-[--color-foreground] group-hover:opacity-100"
