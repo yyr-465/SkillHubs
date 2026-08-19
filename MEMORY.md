@@ -488,4 +488,10 @@ Follow-up changes after the user opened the Web build and reviewed it:
 - 已交付（不依赖签名）：.github/ISSUE_TEMPLATE（bug_report / feature_request / config.yml）、SECURITY.md、docs/installation.md、docs/getting-started.md、docs/safe-execution.md、docs/backup-restore.md、docs/known-limitations.md、docs/release-notes-template.md；README 新增 Documentation 链接区（内部链接已验证）。
 - 待签名门禁解锁后才可完成：1.0.0 RC 生成与干净 VM 端到端验收（Phase 14 其余部分）。
 - 提交：1dd023a（issue 模板 + SECURITY）、e92686e（用户文档 + README 链接区）；本地领先远程 6 个 commit 待 push。
+# P2-8 — SignPath 重申请门槛清单（产出，2026-08-19）
+
+- 已产出 `docs/signpath-readiness.md`：信号清单（A 社区采用 / B 独立引用 / C 机构背书 / D 项目健康度）+ 建议阈值 + 硬性门槛 H1-H4 + 重新申请明确时机 + 季度复核机制。
+- GitHub API 实测基线（2026-08-19）：stars 0 / forks 0 / open issues 0 / subscribers 0；仓库活跃（当日有 push）、MIT、wiki 开启、资料与 CI 齐备。
+- 结论：外部可见度为零，当前不具重新申请条件；预计需数月真实积累（A3 ≥ 3 外部 issue/讨论 或 B1 ≥ 2 独立引用 + H1-H4 全满足）。
+- 下一次季度复核：2026-11-30。
 
