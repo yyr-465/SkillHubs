@@ -247,6 +247,7 @@
   "export.reportItem4": "Full skill list by category",
   "export.selectDir": "Select directory",
   "export.packageDone": "Export complete",
+  "export.packageFailed": "Package export failed. Please choose a folder and try again.",
   "dashboard.conflicts": "Unresolved Conflicts",
   "dashboard.conflictsView": "View",
   "conflict.title": "Category Conflicts",

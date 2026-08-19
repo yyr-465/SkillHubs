@@ -25,6 +25,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
   const [scope, setScope] = useState<"selected" | "filter" | "all">("selected");
   const [columns, setColumns] = useState<Set<string>>(new Set(DEFAULT_COLS));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filterCount, setFilterCount] = useState(0);
   const [allCount, setAllCount] = useState(0);
 
@@ -55,6 +56,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
   const handleExport = async () => {
     if (format === "csv" && columns.size === 0) return;
     setSaving(true);
+    setError(null);
     try {
       const ids = await resolveIds();
       if (ids.length === 0) { setSaving(false); return; }
@@ -109,11 +111,14 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
 
   const savePackage = async (csvData: string, mdData: string) => {
     try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { open } = await import("@tauri-apps/plugin-dialog");
       const { mkdir, writeTextFile } = await import("@tauri-apps/plugin-fs");
 
-      // Pick a directory
-      const dirPath = await save({
+      // Pick a directory. The dialog grants read/write access to the chosen
+      // folder and its subfolders for this export session.
+      const dirPath = await open({
+        directory: true,
+        recursive: true,
         title: t("export.selectDir") ?? "Select directory",
       });
       if (!dirPath) return;
@@ -144,6 +149,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
       ]);
     } catch (e) {
       console.error("Package export failed", e);
+      setError(t("export.packageFailed"));
     }
   };
 
@@ -169,6 +175,10 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {error && (
+          <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
+        )}
 
         <div className="flex-1 overflow-y-auto space-y-5">
           {/* Format Selection */}

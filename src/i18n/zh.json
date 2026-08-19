@@ -245,6 +245,7 @@
   "export.reportItem4": "Full skill list by category",
   "export.selectDir": "Select directory",
   "export.packageDone": "Export complete",
+  "export.packageFailed": "打包导出失败，请重新选择目录后再试。",
   "dashboard.conflicts": "Unresolved Conflicts",
   "dashboard.conflictsView": "View",
   "conflict.title": "Category Conflicts",
