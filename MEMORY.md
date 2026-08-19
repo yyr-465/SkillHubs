@@ -494,4 +494,25 @@ Follow-up changes after the user opened the Web build and reviewed it:
 - GitHub API 实测基线（2026-08-19）：stars 0 / forks 0 / open issues 0 / subscribers 0；仓库活跃（当日有 push）、MIT、wiki 开启、资料与 CI 齐备。
 - 结论：外部可见度为零，当前不具重新申请条件；预计需数月真实积累（A3 ≥ 3 外部 issue/讨论 或 B1 ≥ 2 独立引用 + H1-H4 全满足）。
 - 下一次季度复核：2026-11-30。
+# 会话进度快照（2026-08-19）
+
+## 今天已完成
+
+- **P1-7 收尾**：Quick start + 桌面截图 + Web 截图已 push（dbd2ff7、8228e33）；截图版本不一致问题记录为 A-3（用户决定留到最后处理）。
+- **P3-12 全部处置**：11 项中 2 项修复（风险 7 导出目录选择器 + 双语错误提示；技术债 1 筛选条件去重，净删 62 行），9 项接受并记录理由；cargo test 48/48、tsc/lint/build 全过。
+- **P1-6 文档交付物（A-1）**：issue 模板 + SECURITY.md + 6 篇用户文档 + release notes 模板 + README Documentation 区（已 push）。
+- **P2-8 门槛清单（A-2）**：docs/signpath-readiness.md，GitHub API 实测基线（stars/forks/issues 全 0）。
+- **B 类桌面 QA 清单**：qa/desktop-qa-checklist.md（8 节：CSP/换机重指向/主题键盘/导出备份/5000 数据集/执行回归/DeepSeek 端到端/归档）。
+
+## 当前状态
+
+- 本地领先远程 3 个 commit 待 push：8fc61ff（P2-8 清单）、e5c3f39（A-3 标记）、qa/desktop-qa-checklist.md + 本快照（见下）。
+- 沙箱内可独立推进的工作已全部完成；剩余均需用户侧（截图、真实桌面 QA、DeepSeek API 配置）。
+
+## 明天待办（建议顺序）
+
+1. push 待提交 commit（8fc61ff、e5c3f39、QA 清单快照）。
+2. **B 类桌面 GUI QA**（按 qa/desktop-qa-checklist.md 执行；重点：CSP 运行时、换机重指向 UI、风险 7 导出目录选择器、5,000 数据集冒烟）。
+3. **P3-10** DeepSeek 端到端（提供运行时 API 配置后）。
+4. **A-3** README 截图重传（留到最后，用户提供同一版本截图）。
 
