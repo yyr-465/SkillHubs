@@ -23,6 +23,26 @@ A free, read-only **Web edition** of the Skill catalogue is live at **<https://y
 - Check, download, verify, and install signed application updates.
 - Use English, Chinese, dark, light, system, or custom themes.
 
+## Quick start
+
+1. **Install and launch SkillHub** from [GitHub Releases](https://github.com/yyr-465/SkillHubs/releases). Until production code signing completes, treat the installers as test builds (see [Installation](#installation)).
+
+2. **Choose your skills folder.** On first launch the dashboard shows the onboarding state: no directory configured and no skills. Select the folder that contains your `SKILL.md` files — SkillHub scans it recursively and builds a local catalog. You can change or clear the directory later from the dashboard.
+
+   ![First-launch onboarding with no directory configured](docs/images/desktop-onboarding.png)
+
+3. **Scan and explore.** Click *Scan now*; discovered skills appear on the dashboard, where you can search, filter, tag, categorize, and favorite them. Everything is stored locally in SQLite.
+
+   ![Dashboard showing the first discovered skill](docs/images/desktop-first-skill.png)
+
+4. **Open a skill** to read its description, source metadata, and safety notes.
+
+5. **Run a skill (optional).** Only skills with an explicit execution declaration offer a run action. Review the confirmation preview, then confirm. Commands run without a shell under a narrow executable allowlist, with a timeout and managed process-tree cleanup.
+
+6. **Missing directory, empty folder, or missing dependencies?** Each state is explained in English and Chinese with actionable messages — for example, a preflight check tells you to install or add an executable to `PATH` before you run a skill.
+
+Not ready to install? Try the read-only [Web edition](#try-it-online) in your browser — no account or API key needed.
+
 ## Platform
 
 - Windows x64
