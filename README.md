@@ -45,6 +45,20 @@ A free, read-only **Web edition** of the Skill catalogue is live at **<https://y
 
 Not ready to install? Try the read-only [Web edition](#try-it-online) in your browser — no account or API key needed.
 
+## Documentation
+
+- [Installation](docs/installation.md) — system requirements, install / update / uninstall, data directory.
+- [Getting started](docs/getting-started.md) — first-use walkthrough: choose a folder, scan, browse, and run your first skill.
+- [Safe execution](docs/safe-execution.md) — how skill execution is constrained and what it can and cannot do.
+- [Backup & restore](docs/backup-restore.md) — protect your data and move to a new machine.
+- [Known limitations](docs/known-limitations.md) — current limitations and their dispositions.
+- [Data directory & backup reference](DATA_DIRECTORY.md) — formal data-location and backup-format reference.
+- [Web edition](WEB.md) — scope, data source, and security notes for the Web build.
+- [Privacy policy](PRIVACY.md) — network behavior and data handling.
+- [Code signing policy](CODE_SIGNING_POLICY.md) — release provenance and signing roles.
+- [Security policy](SECURITY.md) — how to report vulnerabilities.
+- [Contributing](CONTRIBUTING.md) — development setup and contribution guidelines.
+
 ## Platform
 
 - Windows x64
