@@ -483,3 +483,9 @@ Follow-up changes after the user opened the Web build and reviewed it:
 - 风险 7 修复的桌面运行时行为（Windows 下目录选择器 + scope 放行）需真实 Tauri 环境 QA（本沙箱无 GUI）。
 - 本次改动 4 文件：ExportDialog/index.tsx、i18n/en.json、i18n/zh.json、src-tauri/src/db.rs。
 
+# P1-6 文档交付物（部分完成，2026-08-19）
+
+- 已交付（不依赖签名）：.github/ISSUE_TEMPLATE（bug_report / feature_request / config.yml）、SECURITY.md、docs/installation.md、docs/getting-started.md、docs/safe-execution.md、docs/backup-restore.md、docs/known-limitations.md、docs/release-notes-template.md；README 新增 Documentation 链接区（内部链接已验证）。
+- 待签名门禁解锁后才可完成：1.0.0 RC 生成与干净 VM 端到端验收（Phase 14 其余部分）。
+- 提交：1dd023a（issue 模板 + SECURITY）、e92686e（用户文档 + README 链接区）；本地领先远程 6 个 commit 待 push。
+
