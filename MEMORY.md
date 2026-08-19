@@ -447,3 +447,9 @@ Follow-up changes after the user opened the Web build and reviewed it:
 4. **桌面 GUI 外部 QA**（CSP 运行时验证、换机重指向 UI 视觉交互）—— 有真实 Tauri 环境时做。
 5. **P2-6 / P2-7 / P2-8**（签名/密钥）—— 仍 BLOCKED（SignPath 被拒，需真实信任信号，对应 P1-8 积累真实用户/反馈）。
 
+# P1-7 后续 — README 截图待重传（2026-08-19）
+
+- P1-7 配图相关 2 个 commit（本地，未 push）：dbd2ff7（README Quick start + 桌面截图）、8228e33（Web 版截图）。
+- **用户检查发现**：当前 README 配图（docs/images/desktop-onboarding.png、desktop-first-skill.png、web-home.png）不是同一版本的照片，界面版本不一致，不能作为正式配图。
+- **待办**：后续重新上传同一版本的正确截图，替换 docs/images/ 下的图片并核对 README 引用；替换后连同上述 commit 一起 push。
+
