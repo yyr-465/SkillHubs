@@ -8,6 +8,8 @@ It scans user-selected directories for `SKILL.md` files and builds a local catal
 
 A free, read-only **Web edition** of the Skill catalogue is live at **<https://yyr-465.github.io/SkillHubs/>**. Browse, search, view details, and share example Skills in your browser with English/Chinese and light/dark themes — no account, no API key, and nothing is uploaded. The Web edition serves a static catalogue of example Skills; local scanning, dependency checks, and safe execution remain desktop-only.
 
+   ![SkillHub Web edition home page](docs/images/web-home.png)
+
 > **Release status:** SkillHub is currently pre-1.0 software. Existing public installers are updater-signed but are not yet Authenticode-signed. The production signing and release gate must be completed before the installers are presented as a trusted public release. Since 2026-08-17 the free Web edition above is live; the desktop 1.0.0 public release remains gated on production code signing (see [Code signing policy](#code-signing-policy)).
 
 ## Features
