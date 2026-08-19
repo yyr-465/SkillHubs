@@ -449,7 +449,37 @@ Follow-up changes after the user opened the Web build and reviewed it:
 
 # P1-7 后续 — README 截图待重传（2026-08-19）
 
-- P1-7 配图相关 2 个 commit（本地，未 push）：dbd2ff7（README Quick start + 桌面截图）、8228e33（Web 版截图）。
+- P1-7 配图相关 2 个 commit：dbd2ff7（README Quick start + 桌面截图）、8228e33（Web 版截图）——**已由用户 push 至远程**；仅 8115421（本次 MEMORY 记录）待 push。
 - **用户检查发现**：当前 README 配图（docs/images/desktop-onboarding.png、desktop-first-skill.png、web-home.png）不是同一版本的照片，界面版本不一致，不能作为正式配图。
 - **待办**：后续重新上传同一版本的正确截图，替换 docs/images/ 下的图片并核对 README 引用；替换后连同上述 commit 一起 push。
+
+# P3-12 — 潜在风险与技术债处置（COMPLETE，2026-08-19）
+
+来源：总结/8.3a潜在风险.md（7 项）+ 总结/8.3b潜在风险.md（4 项）= 11 项。结论：**2 项已修复，9 项接受并记录理由**。
+
+## 已修复
+
+| 项 | 内容 | 修复 | 验证 |
+| --- | --- | --- | --- |
+| 风险 7（P2，安全相关） | 打包导出依赖 plugin-fs mkdir，受 fs scope 约束；原用文件保存对话框选目录，基线目录（$DESKTOP/$DOCUMENT/$DOWNLOAD）之外 mkdir 会被 scope 拒绝且**静默失败**（仅 console.error） | ExportDialog.savePackage 改用 open({ directory: true, recursive: true }) 目录选择器（dialog 会动态放行所选目录递归子路径）；失败时显示双语错误 export.packageFailed（en/zh 各 +1 键） | tsc --noEmit 0、lint 0 错（19 既有警告）、pnpm run build 0 |
+| 技术债 1（P1） | query_skills 内联筛选与 build_filter_conditions 双写（6 个条件逐字等价），新增筛选字段需同步两处 | query_skills 改为调用 build_filter_conditions()，共用同一代码路径 | cargo test 48/48，cargo build 无新增警告 |
+
+## 接受并记录理由
+
+| 项 | 内容 | 结论 |
+| --- | --- | --- |
+| 技术债 2 | 时间戳无 chrono；parse_ym 仅认 YYYY-MM，极端年份边界 | 接受：date_added 全部来自 SKILL.md front-matter，格式统一；format_timestamp 为标准 civil_from_days 算法，2020-2030 精确。数据源多样化时再引入 chrono |
+| 技术债 3 | savePackage stat→mkdir TOCTOU | 接受：需用户在毫秒级连点两次导出才可能触发，手动场景不现实；自动定时导出时改 Rust 端 create_dir_all+重试 |
+| 技术债 4 | CSV 前置 BOM 影响代码解析者 | 接受：Excel 中文兼容标准做法；未来如需纯 CSV 可加 no_bom 选项 |
+| 技术债 5 | 报表描述截断硬编码 80 字符 | 接受：truncate 本身已参数化（max_len），80 是调用点展示权衡；可配置化推迟 |
+| 技术债 6 | tags 逗号连接 | 接受：csv crate 自动给含逗号字段加引号，解析无副作用 |
+| 技术债 8 | 8.3b 之前被旧版本覆盖的分类无历史记录 | 接受：历史数据缺口不可恢复，无需代码改动 |
+| 技术债 9 | reason 依赖 DeepSeek 遵守 Reason: 格式 | 接受：不遵守时分类仍保存、理由为空（优雅降级）；已有语言回归测试 |
+| 技术债 10 | DeepSeek 端到端验证依赖运行时配置 | 接受：外部门禁（P3-10），需用户提供运行时 API 配置；代码无改动 |
+| 技术债 11 | cargo fmt --check 大量差异 | 接受：实测 196 处 hunk / 12 个源文件，全仓格式化产生巨大无关 diff；推迟到 Phase 14 RC 前作为独立格式化提交 |
+
+## 遗留外部验证
+
+- 风险 7 修复的桌面运行时行为（Windows 下目录选择器 + scope 放行）需真实 Tauri 环境 QA（本沙箱无 GUI）。
+- 本次改动 4 文件：ExportDialog/index.tsx、i18n/en.json、i18n/zh.json、src-tauri/src/db.rs。
 
