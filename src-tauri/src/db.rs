@@ -813,71 +813,9 @@ pub fn get_stats(conn: &Connection) -> SqlResult<Stats> {
 /// Query skills with dynamic filtering, sorting, and pagination.
 /// Returns SkillPage with total_count using SQL window function.
 pub fn query_skills(conn: &Connection, query: &SkillQuery) -> SqlResult<SkillPage> {
-    let mut conditions: Vec<String> = Vec::new();
-    let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
-    let mut idx = 1;
-
-    if let Some(ref search) = query.search {
-        let trimmed = search.trim();
-        if !trimmed.is_empty() {
-            conditions.push(format!("skills.rowid IN (SELECT rowid FROM skills_fts WHERE skills_fts MATCH ?{})", idx));
-            param_values.push(Box::new(trimmed.to_string()));
-            idx += 1;
-        }
-    }
-
-    if let Some(ref cat) = query.category {
-        let trimmed = cat.trim();
-        if !trimmed.is_empty() {
-            conditions.push(format!("category = ?{}", idx));
-            param_values.push(Box::new(trimmed.to_string()));
-            idx += 1;
-        }
-    }
-
-    if let Some(ref r) = query.risk {
-        let trimmed = r.trim();
-        if !trimmed.is_empty() {
-            conditions.push(format!("risk = ?{}", idx));
-            param_values.push(Box::new(trimmed.to_string()));
-            idx += 1;
-        }
-    }
-
-    if let Some(ref s) = query.source {
-        let trimmed = s.trim();
-        if !trimmed.is_empty() {
-            conditions.push(format!("source = ?{}", idx));
-            param_values.push(Box::new(trimmed.to_string()));
-            idx += 1;
-        }
-    }
-
-    if let Some(true) = query.favorite_only {
-        conditions.push(format!("favorite = 1"));
-    }
-    
-    if let Some(ref tag_ids) = query.tag_ids {
-        if !tag_ids.is_empty() {
-            let placeholders: Vec<String> = tag_ids.iter().enumerate()
-                .map(|(i, _)| format!("?{}", idx + i))
-                .collect();
-            conditions.push(format!(
-                "skills.id IN (SELECT skill_id FROM skill_tags WHERE tag_id IN ({}))",
-                placeholders.join(",")
-            ));
-            for &tid in tag_ids {
-                param_values.push(Box::new(tid));
-            }
-            idx += tag_ids.len();
-        }
-    }
-
-    let where_clause = if conditions.is_empty() {
-        String::new()
-    } else {
-        format!("WHERE {}", conditions.join(" AND "))
-    };
+    // Shared filter conditions keep query_skills and get_skill_ids_by_query
+    // on the same code path (P3-12: avoid filter drift on new SkillQuery fields).
+    let (where_clause, mut param_values, idx) = build_filter_conditions(query);
 
     let order_column = match query.sort_field {
         Some(SortField::Name) => "name",
