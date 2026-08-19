@@ -451,7 +451,7 @@ Follow-up changes after the user opened the Web build and reviewed it:
 
 - P1-7 配图相关 2 个 commit：dbd2ff7（README Quick start + 桌面截图）、8228e33（Web 版截图）——**已由用户 push 至远程**；仅 8115421（本次 MEMORY 记录）待 push。
 - **用户检查发现**：当前 README 配图（docs/images/desktop-onboarding.png、desktop-first-skill.png、web-home.png）不是同一版本的照片，界面版本不一致，不能作为正式配图。
-- **待办**：后续重新上传同一版本的正确截图，替换 docs/images/ 下的图片并核对 README 引用；替换后连同上述 commit 一起 push。
+- **待办（A-3，用户决定留到最后处理，2026-08-19）**：后续重新上传同一版本的正确截图，替换 docs/images/ 下的图片并核对 README 引用；替换后提交 push 即可（README 引用不变）。
 
 # P3-12 — 潜在风险与技术债处置（COMPLETE，2026-08-19）
 
