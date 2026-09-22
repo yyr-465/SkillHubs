@@ -27,7 +27,18 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
+      - run: pnpm run lint
+      - run: pnpm run test:readme
+      - run: pnpm run test:catalog
+      - run: pnpm run test:worker
+      - run: pnpm run typecheck:worker
+      - run: pnpm run build:web
+      - name: Verify committed catalog is current
+        run: |
+          if ! git diff --exit-code -- public/catalog || [ -n "$(git ls-files --others --exclude-standard -- public/catalog)" ]; then
+            echo "::error::Catalog snapshot is stale. Run pnpm run build:web and commit public/catalog/."
+            exit 1
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

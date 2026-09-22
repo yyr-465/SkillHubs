@@ -22,6 +22,7 @@ pnpm exec tauri dev
 - `src/` — React 19 + TypeScript + Vite frontend (pages, components, stores, i18n).
 - `src-tauri/src/` — Tauri 2 + Rust backend: commands, SQLite access, scanner, execution, backup.
 - `web-catalog/skills/<id>/SKILL.md` — committed sources for the example Skills served by the Web catalogue.
+- `public/catalog/` — committed generated snapshot; regenerate with `pnpm run build:web` after editing Catalog sources and commit the updated output.
 - `scripts/` — catalogue generation, local preview, and deploy helpers.
 - `qa/` — phase QA reports and evidence.
 
@@ -30,14 +31,19 @@ pnpm exec tauri dev
 Before committing, run and pass all of the following:
 
 ```powershell
-pnpm exec tsc --noEmit
 pnpm run lint
+pnpm run test:readme
+pnpm run test:catalog
+pnpm run test:worker
+pnpm run typecheck:worker
 pnpm run build
+pnpm run build:web
 cargo build --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 Bug fixes should include a focused regression test when practical.
+The ordinary build retains `tsc -b && vite build`; the Web build regenerates the Catalog first. Pages also checks that regenerated `public/catalog/` matches what is committed.
 
 ## Commit guidelines
 

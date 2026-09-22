@@ -1,18 +1,28 @@
 # SkillHub
 
-SkillHub is an open-source Windows desktop application for discovering, organizing, searching, reviewing, and safely running locally installed AI skills.
+Browse and understand AI Skills.
 
-It scans user-selected directories for `SKILL.md` files and builds a local catalog with categories, tags, favorites, full-text search, recent history, import/export, and optional AI-assisted categorization.
+**[Open SkillHub Web](https://yyr-465.github.io/SkillHubs/)** — the primary public edition. Browse eight curated Skills, or choose a local Skill folder to read its `SKILL.md` files in your browser. No account or API key is needed.
 
-## Try it online
+- Browse, search, and filter Skills; inspect metadata and read Markdown content.
+- Open a local folder on demand; the browser reads its `SKILL.md` files recursively without uploading the folder by default.
+- Use English or Chinese UI and light or dark themes.
 
-A free, read-only **Web edition** of the Skill catalogue is live at **<https://yyr-465.github.io/SkillHubs/>**. Browse, search, view details, and share example Skills in your browser with English/Chinese and light/dark themes — no account, no API key, and nothing is uploaded. The Web edition serves a static catalogue of example Skills; local scanning, dependency checks, and safe execution remain desktop-only.
+README AI translation infrastructure exists but is currently disabled on the public Web site because no real translation backend is configured.
 
    ![SkillHub Web edition home page](docs/images/web-home.png)
 
-> **Release status:** SkillHub is currently pre-1.0 software. Existing public installers are updater-signed but are not yet Authenticode-signed. The production signing and release gate must be completed before the installers are presented as a trusted public release. Since 2026-08-17 the free Web edition above is live; the desktop 1.0.0 public release remains gated on production code signing (see [Code signing policy](#code-signing-policy)).
+## Web edition
 
-## Features
+The default Catalog contains eight Skills from `web-catalog/skills/`. You can also select a local folder: the browser reads its `SKILL.md` files recursively and displays them in place of the default Catalog for that session. Web does not automatically scan desktop Skill directories or store scans in SQLite. Local folder loading does not upload the folder. See [WEB.md](WEB.md) and [Privacy Policy](PRIVACY.md).
+
+## Desktop edition
+
+The separate Windows desktop application scans user-selected Skill directories, stores a catalog in SQLite, and supports review and controlled execution. Desktop feature development is paused while the Web edition is the primary public product.
+
+> **Desktop release status:** SkillHub is pre-1.0. Existing public installers are updater-signed but are not yet Authenticode-signed. The production signing and release gate must be completed before they are presented as a trusted public release (see [Code signing policy](#code-signing-policy)).
+
+### Desktop features
 
 - Scan user-selected directories for explicit `SKILL.md` files.
 - Browse, search, filter, tag, categorize, and favorite skills.
@@ -25,9 +35,9 @@ A free, read-only **Web edition** of the Skill catalogue is live at **<https://y
 - Check, download, verify, and install signed application updates.
 - Use English, Chinese, dark, light, system, or custom themes.
 
-## Quick start
+### Desktop quick start
 
-1. **Install and launch SkillHub** from [GitHub Releases](https://github.com/yyr-465/SkillHubs/releases). Until production code signing completes, treat the installers as test builds (see [Installation](#installation)).
+1. **Install and launch SkillHub** from [GitHub Releases](https://github.com/yyr-465/SkillHubs/releases). Until production code signing completes, treat the installers as test builds (see [Installation](#desktop-installation)).
 
 2. **Choose your skills folder.** On first launch the dashboard shows the onboarding state: no directory configured and no skills. Select the folder that contains your `SKILL.md` files — SkillHub scans it recursively and builds a local catalog. You can change or clear the directory later from the dashboard.
 
@@ -43,7 +53,7 @@ A free, read-only **Web edition** of the Skill catalogue is live at **<https://y
 
 6. **Missing directory, empty folder, or missing dependencies?** Each state is explained in English and Chinese with actionable messages — for example, a preflight check tells you to install or add an executable to `PATH` before you run a skill.
 
-Not ready to install? Try the read-only [Web edition](#try-it-online) in your browser — no account or API key needed.
+To browse without installing, open [SkillHub Web](https://yyr-465.github.io/SkillHubs/).
 
 ## Documentation
 
@@ -59,14 +69,14 @@ Not ready to install? Try the read-only [Web edition](#try-it-online) in your br
 - [Security policy](SECURITY.md) — how to report vulnerabilities.
 - [Contributing](CONTRIBUTING.md) — development setup and contribution guidelines.
 
-## Platform
+## Desktop platform
 
 - Windows x64
 - Tauri 2 and Rust backend
 - React, TypeScript, and Vite frontend
 - SQLite local data storage
 
-## Installation
+## Desktop installation
 
 Pre-release installers are available from [GitHub Releases](https://github.com/yyr-465/SkillHubs/releases).
 
@@ -82,9 +92,9 @@ To uninstall SkillHub, use **Windows Settings → Apps → Installed apps → Sk
 
 ## Data and network behavior
 
-SkillHub has no analytics or developer-operated telemetry service. Catalog data, settings, history, and execution audit records are stored locally.
+SkillHub has no developer-operated analytics or telemetry service. Web preferences and activity are stored in the browser; desktop catalog data, settings, history, and execution audit records are stored locally on the computer.
 
-Network access can occur in these cases:
+Desktop network access can occur in these cases:
 
 - The user explicitly starts AI categorization, which sends skill names and descriptions to the DeepSeek API.
 - The user explicitly checks for or downloads an update from GitHub Releases.
@@ -105,7 +115,7 @@ This is a deliberately narrow safety boundary, not a general-purpose terminal or
 Prerequisites:
 
 - Node.js 22
-- pnpm 10
+- pnpm 11
 - Rust stable
 - Windows build tools required by Tauri
 
@@ -119,9 +129,13 @@ pnpm exec tauri dev
 Run the required checks:
 
 ```powershell
-pnpm exec tsc --noEmit
 pnpm run lint
+pnpm run test:readme
+pnpm run test:catalog
+pnpm run test:worker
+pnpm run typecheck:worker
 pnpm run build
+pnpm run build:web
 cargo build --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
@@ -134,11 +148,10 @@ pnpm run tauri:build:qa
 
 ## Web edition (build & deploy)
 
-The Web edition is a static build of the same frontend. Its catalogue is generated from committed sources under `web-catalog/skills/<id>/SKILL.md`:
+The Web edition is a static build of the same frontend. `web-catalog/skills/<id>/SKILL.md` is the editable source; committed `public/catalog/` is its generated snapshot for review and local preview. The Web build regenerates it and fails on invalid Skills:
 
 ```powershell
-node scripts/generate-catalog.mjs   # writes public/catalog/index.json + public/catalog/skills/<id>.md
-pnpm run build                      # vite output to dist/
+pnpm run build:web                  # regenerates public/catalog, then writes dist/
 ```
 
 Preview locally (`scripts/serve-web.py` serves `.js` with the correct MIME type, unlike a plain `python -m http.server`):
@@ -148,7 +161,7 @@ pnpm preview
 # or: python scripts/serve-web.py
 ```
 
-Deployment is automatic: pushing to `main` triggers `.github/workflows/pages.yml`, which requires the GitHub Pages source to be set to "GitHub Actions". A manual fallback builds locally and force-pushes `dist/` to the `gh-pages` branch:
+Deployment is automatic: pushing to `main` triggers `.github/workflows/pages.yml`, which checks the committed generated Catalog against the source before deploying. The GitHub Pages source must be set to "GitHub Actions". After Catalog edits, run `pnpm run build:web` and commit the updated `public/catalog/` snapshot. A manual fallback force-pushes a locally built `dist/` to the `gh-pages` branch:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1

@@ -34,8 +34,9 @@ function parseFrontMatter(content) {
   for (let i = 1; i < end; i += 1) {
     const line = lines[i];
     const idx = line.indexOf(":");
-    if (idx === -1) continue;
+    if (idx === -1 || !line.slice(0, idx).trim()) return null;
     const key = line.slice(0, idx).trim();
+    if (Object.hasOwn(data, key)) return null;
     let value = line.slice(idx + 1).trim();
     const q0 = value.charAt(0);
     if ((q0 === '"' || q0 === "'") && value.endsWith(q0) && value.length >= 2) {
@@ -57,6 +58,7 @@ function asStr(value) {
 }
 
 const skills = [];
+const bodies = new Map();
 const warnings = [];
 
 if (!fs.existsSync(srcDir)) {
@@ -64,23 +66,30 @@ if (!fs.existsSync(srcDir)) {
   process.exit(1);
 }
 
-for (const entry of fs.readdirSync(srcDir)) {
+const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+if (entries.length === 0) throw new Error("Catalog source is empty: " + srcDir);
+
+for (const item of entries) {
+  const entry = item.name;
+  if (!item.isDirectory() || !/^[a-z0-9][a-z0-9-]*$/.test(entry)) {
+    throw new Error("Invalid Skill directory: " + entry);
+  }
   const dir = path.join(srcDir, entry);
   const mdFile = path.join(dir, "SKILL.md");
-  if (!fs.existsSync(mdFile)) continue;
+  if (!fs.existsSync(mdFile)) throw new Error("Missing SKILL.md: " + entry);
   const parsed = parseFrontMatter(fs.readFileSync(mdFile, "utf8"));
-  if (!parsed) {
-    warnings.push(entry + ": no front matter, skipped");
-    continue;
-  }
+  if (!parsed) throw new Error("Invalid front matter: " + entry);
   const { data, body } = parsed;
+  if (!asStr(data.name) || !asStr(data.description) || !body.trim()) {
+    throw new Error("Skill requires name, description, and Markdown body: " + entry);
+  }
   if (data.execution !== undefined && data.execution !== null) {
     warnings.push(entry + ": execution declaration ignored (Web is read-only)");
   }
   skills.push({
     id: entry,
-    name: asStr(data.name) ?? entry,
-    description: asStr(data.description) ?? "",
+    name: asStr(data.name),
+    description: asStr(data.description),
     category: asStr(data.category),
     risk: asStr(data.risk),
     date_added: asStr(data.date_added),
@@ -89,15 +98,27 @@ for (const entry of fs.readdirSync(srcDir)) {
     favorite: false,
     icon: asStr(data.icon),
   });
-  fs.mkdirSync(outSkillsDir, { recursive: true });
-  fs.writeFileSync(path.join(outSkillsDir, entry + ".md"), body + NL);
+  bodies.set(entry, body + NL);
 }
 
 skills.sort((a, b) => a.name.localeCompare(b.name));
 
-const index = { generated_at: new Date().toISOString(), count: skills.length, skills };
-fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, "index.json"), JSON.stringify(index, null, 2) + NL);
+const index = { count: skills.length, skills };
+fs.mkdirSync(outSkillsDir, { recursive: true });
+for (const file of fs.readdirSync(outSkillsDir)) {
+  if (file.endsWith(".md")) fs.rmSync(path.join(outSkillsDir, file));
+}
+for (const [id, body] of bodies) {
+  fs.writeFileSync(path.join(outSkillsDir, id + ".md"), body);
+}
+const indexFile = path.join(outDir, "index.json");
+fs.writeFileSync(indexFile, JSON.stringify(index, null, 2) + NL);
+const generated = JSON.parse(fs.readFileSync(indexFile, "utf8"));
+const sourceIds = [...bodies.keys()].sort();
+const generatedIds = generated.skills.map((skill) => skill.id).sort();
+if (generated.count !== sourceIds.length || JSON.stringify(generatedIds) !== JSON.stringify(sourceIds)) {
+  throw new Error("Generated catalog count or IDs do not match web-catalog/skills");
+}
 
 for (const w of warnings) console.error("warning: " + w);
 console.log("Generated " + skills.length + " skills -> public/catalog");

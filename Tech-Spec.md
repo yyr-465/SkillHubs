@@ -120,7 +120,23 @@ Make categorization conflict detection, batch resolution, audit history, and con
 - A 760px viewport is not a release acceptance requirement unless the product
   minimum width is deliberately lowered and the layout is revalidated.
 
+# Web catalog build and Pages gate (2026-09-22)
+
+## Current behavior and scope
+
+- Web is the primary public product on GitHub Pages. Its default catalog has eight Skills; users may also choose a local folder for browser-only recursive `SKILL.md` reading. This does not run the desktop scanner or persist a SQLite scan.
+- Desktop functionality and the ordinary `pnpm run build` contract remain unchanged. README translation infrastructure remains present but is disabled on the public site without a configured backend.
+
+## Build contract and acceptance
+
+- `web-catalog/skills/<id>/SKILL.md` is the single editable catalog source. `public/catalog/` is a committed generated snapshot for local preview and review; it is never edited by hand.
+- `pnpm run build:web` regenerates the catalog before TypeScript and Vite. Empty source, missing or malformed Skill files, and mismatched generated IDs or counts fail the build. Removed Skills must leave no stale generated Markdown.
+- Pages runs frozen dependency install, lint, README tests, focused Catalog generator tests, Worker tests, Worker typecheck, and Web build in that order. It checks tracked changes and untracked files under regenerated `public/catalog/` before uploading `dist/`; a mismatch requires rerunning the generator and committing its output.
+- Verify locally with those same checks, `git diff --check`, and focused failure cases for the generator. The workflow does not deploy the translation Worker or alter desktop release gates.
+
 # On-demand Web README translation (2026-09-21)
+
+> Current production status (2026-09-22): The client and Worker infrastructure exists, but no real translation backend is configured. The public Web build hides the translation entry point. The behavior below is the contract for a future configured deployment, not a live feature.
 
 ## Goal
 

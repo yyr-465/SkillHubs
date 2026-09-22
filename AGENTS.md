@@ -14,8 +14,9 @@
 
 ## Required Checks
 
-- Frontend type check: `pnpm exec tsc --noEmit`
+- Frontend type check: `pnpm run build` (includes `tsc -b`)
 - Frontend production build: `pnpm run build`
+- Web production build: `pnpm run build:web` (regenerates and validates the Catalog)
 - Frontend lint: `pnpm run lint`
 - Backend build: `cargo build --manifest-path src-tauri/Cargo.toml`
 - Backend tests: `cargo test --manifest-path src-tauri/Cargo.toml`

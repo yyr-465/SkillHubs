@@ -1,6 +1,6 @@
-# SkillHub Web MVP
+# SkillHub Web
 
-A free, read-only web edition of SkillHub. Users can browse, search, and read
+A free, read-only web edition of SkillHub and the primary public product. Its default Catalog contains eight Skills. Users can browse, search, and read
 Skill details — including safety notes — with English/Chinese language support
 and light/dark themes. It runs on free static hosting and shares the desktop
 app's frontend through a small data-layer abstraction.
@@ -16,11 +16,9 @@ The Web build intentionally exposes only what is safe to publish:
 - Share a Skill via a copyable URL
 - Favourites, search history, and recently viewed (local to the browser)
 - English / Chinese and light / dark theme (persisted in `localStorage`)
+- User-initiated local folder selection; the browser recursively reads `SKILL.md` files
 
-The Web build **never** provides local scanning, dependency checks, process
-execution, import/export, backup, AI categorization, or tags. Those remain
-desktop-only and their UI is hidden in the Web build. Execution, scan,
-categorize, and backup commands fail closed in the Web data layer.
+The Web build does not automatically scan the desktop Skill directory or persist scans in SQLite. It does not provide dependency checks, process execution, import/export, backup, AI categorization, or tags. Those remain desktop-only and their UI is hidden in the Web build. Execution, scan, categorize, and backup commands fail closed in the Web data layer.
 
 ## How it works
 
@@ -36,38 +34,44 @@ CSP meta tag. `App.tsx` mounts `WebDashboard` instead of the desktop
 
 ## Data source & updates
 
-The Web edition is backed by a **static catalogue**, not a database or API:
+The default Web Catalog is **static**, without a database or catalog API:
 
 - `public/catalog/index.json` — Skill metadata list
 - `public/catalog/skills/<id>.md` — Markdown body per Skill
 
-The catalogue is generated from the committed source skills under
+The eight-Skill Catalog is generated from the committed source skills under
 `web-catalog/skills/<id>/SKILL.md` (single-line YAML front matter: `name`,
 `description`, `category`, `risk`, `date_added`, `icon`; the Markdown body
-becomes the detail content). To add or edit a Skill:
+becomes the detail content). `web-catalog/skills/` is the sole editable source. `public/catalog/` is a committed generated snapshot used for review and local preview. To add or edit a Skill:
 
 ```powershell
 # 1. Edit web-catalog/skills/<id>/SKILL.md (or add a new folder)
-# 2. Regenerate the catalogue
-node scripts/generate-catalog.mjs
-# 3. Rebuild and redeploy the static site
-pnpm run build
+# 2. Regenerate the catalogue and build the Web site
+pnpm run build:web
+# 3. Commit the updated public/catalog snapshot with the source edit
 ```
 
 `execution` front matter is intentionally ignored: the Web edition never
 publishes execution declarations.
 
+The generator rejects empty sources, invalid folder IDs, missing or malformed `SKILL.md` files, and Skills without a name, description, or Markdown body. It removes stale generated Markdown and verifies the index count and IDs. Pages regenerates the Catalog and fails if `public/catalog/` differs from the committed snapshot.
+
+When a user chooses a local folder, the browser reads authorized `SKILL.md` files recursively through the directory picker or file input. It parses them in memory and temporarily replaces the default Catalog; loading a folder does not automatically upload its contents. The local folder selection is not a desktop SQLite scan.
+
 ## Live site
 
-The Web MVP is published at **https://yyr-465.github.io/SkillHubs/**
-(GitHub Pages, `gh-pages` branch). To refresh it after a rebuild, re-run
-`scripts/deploy-gh-pages.ps1`.
+The Web edition is published at **https://yyr-465.github.io/SkillHubs/** through GitHub Pages. Pushes to `main` run `.github/workflows/pages.yml` when Pages is configured to use GitHub Actions. The older `scripts/deploy-gh-pages.ps1` is a manual fallback that publishes a prebuilt `dist/` to `gh-pages`.
 
 ## Build & deploy
 
 ```powershell
-pnpm install
-pnpm run build      # emits ./dist
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run test:readme
+pnpm run test:catalog
+pnpm run test:worker
+pnpm run typecheck:worker
+pnpm run build:web  # regenerates public/catalog and emits ./dist
 pnpm preview        # local smoke test (recommended)
 ```
 
@@ -84,23 +88,18 @@ Local preview options:
 static host, including sub-path hosting:
 
 - **GitHub Pages** — push `dist/` to a `gh-pages` branch or use a Pages action
-- **Cloudflare Pages** — build command `pnpm run build`, output `dist`
-- **Vercel** — framework "Vite", build `pnpm run build`, output `dist`
+- **Cloudflare Pages** — build command `pnpm run build:web`, output `dist`
+- **Vercel** — framework "Vite", build `pnpm run build:web`, output `dist`
 
 ### GitHub Pages (step-by-step)
 
-Quickest path (publishes the already-built `dist/` without committing source):
+Manual fallback (publishes the already-built `dist/` without committing source):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1
 ```
 
-Then enable Pages once: **Settings → Pages → Source: "Deploy from a branch" →
-`gh-pages` → `/ (root)` → Save**. Site URL:
-`https://yyr-465.github.io/SkillHubs/`.
-
-For automatic deploys on every push to `main`, commit
-`.github/workflows/pages.yml` and set Pages Source to "GitHub Actions".
+For the primary automatic workflow, set Pages Source to **GitHub Actions**. The workflow installs frozen dependencies, runs lint, README and Worker tests, Worker typecheck, Web build, and a generated Catalog diff check before upload and deploy. If using the manual fallback instead, configure Pages to deploy the `gh-pages` branch and rebuild `dist/` first.
 
 No API keys, backend, or custom domain are required.
 
@@ -111,8 +110,9 @@ No API keys, backend, or custom domain are required.
   `VITE_TRANSLATION_API_URL` is unset or invalid. The translation client,
   IndexedDB cache, and Worker implementation remain in the repository for
   future activation. No model provider or translation Worker is deployed yet.
-- **Local loading counts SKILL.md files**: "Load local Skill folder"
-  recursively counts files named `SKILL.md` (case-insensitive). It does not read
+- **Local loading reads SKILL.md files**: "Load local Skill folder"
+  recursively reads files named `SKILL.md` (case-insensitive), displays valid
+  Skills, and reports skipped invalid files. It does not read
   the desktop app's database, so skills that only exist in the database
   (AI-categorized, manually edited, or imported) and are not on disk will not
   appear.
@@ -137,8 +137,8 @@ No API keys, backend, or custom domain are required.
   front matter cannot execute script or load external resources.
 - **No secrets** — the Web build stores nothing secret; settings never persist
   an API key, and the catalogue contains no credentials.
-- **No filesystem / execution** — the Web data layer has no access to local
-  files or processes.
+- **Local files / execution** — only user-selected local folders are read in
+  the browser; the Web data layer cannot execute processes.
 
 ## Keeping the desktop app working
 

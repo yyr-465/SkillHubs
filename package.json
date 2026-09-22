@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:web": "node scripts/generate-catalog.mjs && tsc -b && vite build",
     "lint": "oxlint",
     "test:readme": "node tests/readme.test.ts",
+    "test:catalog": "node --test tests/catalog.test.mjs",
     "test:worker": "node --test worker/test/worker.test.ts",
     "typecheck:worker": "node node_modules/typescript/bin/tsc -p worker/tsconfig.json",
     "worker:dev": "node node_modules/wrangler/bin/wrangler.js dev --config worker/wrangler.toml",

@@ -1,30 +1,17 @@
 > 工作区说明：本仓库曾随开发环境迁移（2026-08-15），现于独立工作区维护；git 历史与远程 origin 连续、无分叉。本文档内路径均为相对/通用表述，不含本机盘符。
 
-# Web 版发布流程（强制：每次 SkillHubs 更新后必须执行）
+# Web 版构建与发布状态（2026-09-22）
 
-Web 版是独立发布的静态站点（GitHub Pages，`gh-pages` 分支），公网地址：
+Web 是当前主要公开产品，GitHub Pages 公网地址：
 **https://yyr-465.github.io/SkillHubs/**
 
-**规则：只要 SkillHubs 有任何会体现到 Web 版的变化（Skill 目录内容、前端代码、
-catalog、文案等），就必须重新发布 Web 版**，否则公网站点停留在旧版本，与项目不同步。
+- 默认 Catalog 有 8 个 Skill。`web-catalog/skills/<id>/SKILL.md` 是唯一可编辑源；`public/catalog/` 是提交到 Git 的生成快照，供本地预览与审查使用。
+- `pnpm run build:web` 先生成并校验 Catalog，再执行 `tsc -b && vite build`；普通 `pnpm run build` 语义不变。生成器对空源、无效目录或 Skill 失败，并清除过期的生成 Markdown。
+- `.github/workflows/pages.yml` 在 `main` 推送或手动触发时运行冻结安装、lint、README/Catalog/Worker 测试、Worker 类型检查、Web build，以及生成产物的已跟踪差异和未跟踪文件检查，全部通过后才部署。Catalog 源文件更新时需一并提交生成快照。
+- Web 允许用户主动选择本地文件夹，由浏览器递归读取 `SKILL.md`，不执行桌面自动扫描或 SQLite 持久化；加载文件夹不会自动上传。翻译基础设施存在，但公开 Web 未配置真实后端，翻译入口隐藏。
+- 2026-09-22 本轮仅改 Web 工程维护性与文档，未修改桌面 Rust 与 release workflow。`scripts/deploy-gh-pages.ps1` 保留为手动回退。
 
-发布步骤（在本机已认证 git 的终端执行）：
-
-1. `pnpm run build`
-2. `powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1`
-
-若更新的是 Skill 目录（`web-catalog/skills/*/SKILL.md`），发布前先重建目录：
-
-1. 修改 `web-catalog/skills/<id>/SKILL.md`（或新增目录）
-2. `node scripts/generate-catalog.mjs`
-3. `pnpm run build`
-4. `powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1`
-
-注意：
-- 脚本已内置 `git config http.sslBackend openssl`（本机 schannel TLS 损坏，默认会报
-  SEC_E_NO_CREDENTIALS / Connection reset）。
-- git 未认证时会提示输入 GitHub 用户名 + Personal Access Token（不是登录密码）。
-- 部署后建议访问公网地址核对首页、目录、JS MIME 是否正确。
+历史记录中要求每次改动后手动推送 `gh-pages`，现以 GitHub Actions 的 Pages 工作流为主要发布渠道；手动脚本仅在需要回退时使用。
 
 # Web README 按需 AI 翻译（2026-09-21）
 
