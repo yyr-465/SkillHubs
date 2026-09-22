@@ -25,6 +25,22 @@ catalog、文案等），就必须重新发布 Web 版**，否则公网站点停
   SEC_E_NO_CREDENTIALS / Connection reset）。
 - git 未认证时会提示输入 GitHub 用户名 + Personal Access Token（不是登录密码）。
 - 部署后建议访问公网地址核对首页、目录、JS MIME 是否正确。
+
+# Web README 按需 AI 翻译（2026-09-21）
+
+- 2026-09-22 产品状态：真实 Provider 接入暂停；未配置模型 API、Key 或 Cloudflare Secret，未部署翻译 Worker。Web 构建缺少有效 `VITE_TRANSLATION_API_URL` 时隐藏“翻译至中文”入口并正常展示 Original；翻译客户端、IndexedDB、sourceHash、Worker、Provider 抽象、Prompt 和测试均保留。桌面端不变。
+- README 首次打开始终显示 Original；只有用户点击“翻译至中文”后才查询缓存或请求服务，成功后自动切换中文并显示“中文 / Original”切换。
+- Catalog Skill 与浏览器加载的本地 Skill 使用同一条前端链路。当前 README 在浏览器中规范化并计算 SHA-256，缓存键为 `promptVersion + targetLanguage + sourceHash`，Skill ID 只作元数据，避免同 ID 不同内容串缓存。
+- 中文译文存入 IndexedDB `skillhub-readme-translations`，不使用 localStorage 保存大文本。README 内容变化会产生新 Hash，旧缓存自然失效。
+- 本地 Skill 第一次翻译前显示隐私确认：只发送当前 README，不上传文件夹内其他文件。确认标记可存在 localStorage，但 README 内容不会写入其中。
+- 浏览器只调用可配置的 `VITE_TRANSLATION_API_URL` HTTPS 服务，协议见 `docs/translation-api.md`；模型 Key 只能存在服务端环境变量。未配置后端时 Original 仍可阅读，生产环境没有伪翻译或浏览器直连模型的回退。
+- 已撤销未提交的静态 `web-catalog/translations/`、生成器翻译复制逻辑及 `public/catalog` Hash 变更。桌面端 Rust、SQLite、备份、Settings 和既有 IPC 均未修改；桌面详情仍只显示 Original。
+- 当前仓库、Git HEAD、远程 main 和线上 Pages 的默认 Web Catalog 均为 8 个示例 Skill；浏览器本地加载数量取决于用户选择的目录。
+- 验证：README 按需翻译测试通过；TypeScript 直接检查与 `pnpm run build` 通过；lint 0 错误（19 条既有警告）；i18n 342/342 键一致；Rust 单线程全量测试 48/48；Edge 无头模式确认 Original README 与翻译按钮布局正常。`pnpm exec tsc -b` 在当前 Windows pnpm 环境无法解析 `tsc`，但 `node node_modules/typescript/bin/tsc -b` 和 build 内的 `tsc -b` 均通过。
+- 第二阶段后端位于 `worker/`：Cloudflare Worker 暴露 `POST /api/translate-readme`，使用可替换的 `TranslationProvider` 和一个 OpenAI-compatible 实现；模型 Key 仅使用 `MODEL_API_KEY` Worker Secret，URL/模型通过服务端变量配置。
+- Worker 将 README 限制为 32,000 UTF-8 bytes、完整请求限制为 40,960 bytes，并复算前端同规则的 SHA-256；Cloudflare 原生限流为每 IP 每 60 秒 5 次，绑定缺失时 fail closed；模型调用 45 秒超时。
+- CORS 仅允许 `https://yyr-465.github.io`、`http://localhost:1420` 和 `http://127.0.0.1:1420`。日志不记录 README、IP、路径、凭据或 Provider 原始错误，只记录 request ID、Hash 前 12 位、字节数、耗时、状态、Provider 与模型。
+- Worker 自动测试全部使用 mock，不调用真实付费模型。首次真实翻译仍需 Cloudflare 部署权限、最终 Worker URL、模型 Provider HTTPS URL/模型名/API Key，并在自动检查通过后用一个公开 Catalog Skill 和一个公开本地测试 Skill 验收。
 # P1-5 — Web MVP iteration (user feedback, 2026-08-17)
 
 Follow-up changes after the user opened the Web build and reviewed it:
@@ -515,4 +531,3 @@ Follow-up changes after the user opened the Web build and reviewed it:
 2. **B 类桌面 GUI QA**（按 qa/desktop-qa-checklist.md 执行；重点：CSP 运行时、换机重指向 UI、风险 7 导出目录选择器、5,000 数据集冒烟）。
 3. **P3-10** DeepSeek 端到端（提供运行时 API 配置后）。
 4. **A-3** README 截图重传（留到最后，用户提供同一版本截图）。
-

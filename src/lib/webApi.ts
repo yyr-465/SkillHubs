@@ -6,6 +6,7 @@ import type {
   FilterOptionWithCount,
   SkillQuery,
   SearchHistoryItem,
+  SkillContent,
   Tag,
 } from "@/store/skillStore";
 import type { AppSettings } from "@/store/settingsStore";
@@ -332,7 +333,13 @@ export async function webInvoke<T>(
       const skill = skills.find((s) => s.id === id);
       if (!skill) return null as T;
       const content = await skillContent(id);
-      return { id: skill.id, name: skill.name, content } as T;
+      const original = content ?? "";
+      return {
+        id: skill.id,
+        name: skill.name,
+        content: original,
+        readme_original: original,
+      } satisfies SkillContent as T;
     }
     case "search_skills": {
       const query = String(args.query ?? "");

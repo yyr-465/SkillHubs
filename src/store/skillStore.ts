@@ -6,7 +6,10 @@ import { invoke } from "@/lib/runtime";
 export interface SkillContent {
   id: string;
   name: string;
+  /** Backward-compatible alias for readme_original. */
   content: string;
+  /** Web catalogue fields. Desktop keeps returning the legacy shape above. */
+  readme_original?: string;
 }
 
 export interface Skill {

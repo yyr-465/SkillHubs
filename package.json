@@ -7,6 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:readme": "node tests/readme.test.ts",
+    "test:worker": "node --test worker/test/worker.test.ts",
+    "typecheck:worker": "node node_modules/typescript/bin/tsc -p worker/tsconfig.json",
+    "worker:dev": "node node_modules/wrangler/bin/wrangler.js dev --config worker/wrangler.toml",
+    "worker:deploy": "node node_modules/wrangler/bin/wrangler.js deploy --config worker/wrangler.toml",
     "preview": "vite preview",
     "tauri:build:qa": "tauri build --config src-tauri/tauri.qa.conf.json --bundles nsis,msi"
   },
@@ -42,6 +47,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "wrangler": "^4.135.0"
   }
 }

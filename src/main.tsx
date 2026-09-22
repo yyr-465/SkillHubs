@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, HashRouter } from "react-router-dom";
 import App from "./App";
 import { IS_TAURI } from "@/lib/runtime";
+import { configuredTranslationApiOrigin } from "@/lib/readmeTranslationApi";
 import "./index.css";
 
 /**
@@ -13,12 +14,17 @@ import "./index.css";
  * identical rather than intersecting them (which could block Tauri IPC).
  */
 if (!IS_TAURI) {
+  const translationApiOrigin = configuredTranslationApiOrigin();
+  const connectSources = ["'self'"];
+  if (translationApiOrigin && translationApiOrigin !== window.location.origin) {
+    connectSources.push(translationApiOrigin);
+  }
   const csp = [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
-    "connect-src 'self'",
+    `connect-src ${connectSources.join(" ")}`,
     "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",

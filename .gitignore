@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+worker/.dev.vars
+worker/.dev.vars.*
+!worker/.dev.vars.example
+worker/.env
+worker/.env.*
+!worker/.env.example
 src-tauri/target/
 *.tsbuildinfo
 

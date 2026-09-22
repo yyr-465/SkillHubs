@@ -119,3 +119,76 @@ Make categorization conflict detection, batch resolution, audit history, and con
   overflow.
 - A 760px viewport is not a release acceptance requirement unless the product
   minimum width is deliberately lowered and the layout is revalidated.
+
+# On-demand Web README translation (2026-09-21)
+
+## Goal
+
+Keep Original as the default README and let Web users explicitly request a high-quality Simplified Chinese translation through a secure backend. Cache successful translations in the browser without modifying the source `SKILL.md`.
+
+## Data contract
+
+- Keep the desktop database, Rust commands, backup format, and ten-column `skills` table unchanged.
+- Treat the README content loaded by `webApi.ts` as authoritative for both committed Catalog Skills and browser-loaded local Skills.
+- Normalize and hash the current README content in the browser with SHA-256.
+- Cache translated Markdown in IndexedDB under `(sourceHash, targetLanguage, promptVersion)`. Skill ID is metadata only.
+- Remove the uncommitted static `web-catalog/translations/<skill-id>.zh.json` path and its generated public artifacts.
+
+## Runtime behavior
+
+- Every README initially displays Original, even when IndexedDB already contains a valid translation.
+- The user explicitly clicks Translate to Chinese. That action checks IndexedDB first and calls the translation API only on a cache miss.
+- A successful cache hit or API response switches the viewer to Chinese and exposes the Chinese / Original switch.
+- Loading keeps Original visible. Failure keeps Original readable and exposes a retry action.
+- A changed README produces a different source hash, so the old cached translation is never selected.
+- Both languages use the existing single Markdown renderer.
+- Before translating a browser-loaded local Skill for the first time, disclose that only the current README will be sent and require confirmation.
+- The legacy desktop IPC remains original-only and keeps its current UI.
+
+## Translation boundary
+
+- The browser calls a configurable HTTPS translation endpoint. Provider credentials exist only in server-side environment variables.
+- The server owns the versioned semantic-translation prompt and performs its quality self-check within one model request.
+- Translation preserves Markdown structure and does not modify code blocks, commands, code, variables, paths, URLs, package names, links, tables, or heading/list structure.
+- Translation does not summarize, omit, or add information.
+- Web bundles, browser requests, static catalog files, and GitHub Pages contain no model API key.
+
+## Acceptance criteria
+
+- Original, loading, translated, cached, error, retry, changed-README, empty-README, Catalog Skill, local Skill, and legacy desktop states render without a new error page.
+- Original README is never overwritten or deleted by translation operations.
+- Cache hits do not call the translation API; hash changes and same-ID/different-content inputs do not reuse old translations.
+- Chinese and Original switching reuses the existing Markdown renderer for headings, lists, tables, blockquotes, inline/fenced code, links, and images.
+- The API request and response conform to `docs/translation-api.md`.
+- Type check, lint, production build, focused frontend tests, and unchanged Rust tests pass.
+
+## Phase 2 — Cloudflare Worker translation service
+
+### API and validation
+
+- Expose only `POST /api/translate-readme` and its CORS preflight.
+- Accept `{ content, sourceHash, targetLanguage, promptVersion }` where the hash is the SHA-256 of the normalized README, the language is `zh-CN`, and the prompt version is `readme-translate-v1`.
+- Reject malformed input with `400`, README content above 32,000 UTF-8 bytes with `413`, exceeded per-IP limits with `429`, provider failures with `502`, and provider timeouts with `504`.
+- Return `{ content, sourceHash, targetLanguage, promptVersion }` only after a non-empty provider result passes response validation.
+
+### Translation provider boundary
+
+- Keep the model integration behind a `TranslationProvider` interface. Phase 2 supplies one OpenAI-compatible chat-completions provider.
+- Read the provider API key exclusively from a Worker secret. Read API URL and model name from Worker environment variables; never ship them in the Web bundle.
+- Use one model request. The versioned prompt requires semantic translation plus an internal self-check before returning only the final Markdown.
+- Treat README text as untrusted data. Instructions inside it cannot override the translation task.
+
+### Security and operations
+
+- Allow CORS only for the production GitHub Pages origin and explicit local Vite origins. Never emit `Access-Control-Allow-Origin: *`.
+- Apply the Cloudflare Rate Limiting binding before the provider call. The production service fails closed when the binding is unavailable.
+- Cap request-body reads, cap README bytes, and abort slow provider calls after 45 seconds.
+- Sanitize client errors and log metadata only: request ID, truncated source hash, byte count, status, duration, provider, and model. Never log README content, filesystem paths, IP addresses, credentials, or raw provider responses.
+- Keep local secrets in ignored `.dev.vars` or `.env` files. Commit examples with blank values only.
+
+### Verification
+
+- Run Worker tests entirely with mock providers and rate limiters; automated tests must not call a paid model.
+- Cover valid translation, request/response field fidelity, validation, oversize input, CORS preflight and rejection, rate limiting, timeout, provider failure, empty/malformed provider responses, and representative Markdown preservation.
+- Type-check Worker and Web code, run focused README/Worker tests, lint, and build before any optional real integration test.
+- Real end-to-end validation is deferred until Cloudflare access, provider credentials, deployment configuration, and a single public test Skill are explicitly available.

@@ -106,6 +106,11 @@ No API keys, backend, or custom domain are required.
 
 ## Known limitations
 
+- **README translation is inactive until configured**: the Web edition shows
+  the Original README without a translation button when
+  `VITE_TRANSLATION_API_URL` is unset or invalid. The translation client,
+  IndexedDB cache, and Worker implementation remain in the repository for
+  future activation. No model provider or translation Worker is deployed yet.
 - **Local loading counts SKILL.md files**: "Load local Skill folder"
   recursively counts files named `SKILL.md` (case-insensitive). It does not read
   the desktop app's database, so skills that only exist in the database

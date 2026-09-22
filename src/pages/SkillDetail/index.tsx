@@ -11,12 +11,11 @@ import SkillEditor from "@/components/SkillEditor";
 import TagBadge from "@/components/TagBadge";
 import TagManager from "@/components/TagManager";
 import ExecutionPanel from "@/components/ExecutionPanel";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import type { Components } from "react-markdown";
+import ReadmeViewer from "@/components/ReadmeViewer";
+import { configuredTranslationApiOrigin } from "@/lib/readmeTranslationApi";
 import { IS_TAURI } from "@/lib/runtime";
+
+const canTranslateReadme = !IS_TAURI && configuredTranslationApiOrigin() !== null;
 
 export default function SkillDetail() {
   const { t } = useTranslation();
@@ -229,8 +228,8 @@ export default function SkillDetail() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-6">
-        <div className="mb-3 flex items-center gap-2">
+      <div className="relative rounded-lg border border-[--color-border] bg-[--color-card] p-6">
+        <div className={`mb-3 flex items-center gap-2 ${canTranslateReadme ? "pr-44" : ""}`}>
           <FileText className="h-4 w-4 text-[--color-muted-foreground]" />
           <h2 className="text-xs font-medium uppercase tracking-wider text-[--color-muted-foreground]">{t("skillDetail.markdown")}</h2>
         </div>
@@ -238,8 +237,12 @@ export default function SkillDetail() {
           <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-[--color-muted-foreground]" /></div>
         ) : contentError ? (
           <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">{t("skillDetail.loadError")}</div>
-        ) : skillContent && skillContent.content.length > 0 ? (
-          <MarkdownRenderer content={skillContent.content} />
+        ) : skillContent ? (
+          <ReadmeViewer
+            content={skillContent}
+            translationEnabled={canTranslateReadme}
+            isLocalSkill={skill.source === "local"}
+          />
         ) : (
           <p className="text-xs text-[--color-muted-foreground]">{t("skillDetail.markdownEmpty")}</p>
         )}
@@ -285,24 +288,6 @@ function InfoCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
           <p className="truncate text-sm font-medium">{value}</p>
         </div>
       </div>
-    </div>
-  );
-}
-
-function MarkdownRenderer({ content }: { content: string }) {
-  const components: Components = {
-    code({ className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || "");
-      const codeString = String(children).replace(/\n$/, "");
-      if (match) {
-        return (<SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" customStyle={{ margin: 0, borderRadius: "0.375rem", fontSize: "0.8rem" }}>{codeString}</SyntaxHighlighter>);
-      }
-      return (<code className="rounded bg-[--color-muted] px-1.5 py-0.5 text-xs text-[--color-muted-foreground]" {...props}>{children}</code>);
-    },
-  };
-  return (
-    <div className="prose prose-sm prose-invert max-w-none text-sm leading-relaxed text-[--color-foreground] [&_a]:text-[--color-primary] [&_a]:underline [&_h1]:mt-6 [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-sm [&_h3]:font-medium [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li>ul]:mt-0 [&_li>ol]:mt-0 [&_blockquote]:border-l-2 [&_blockquote]:border-[--color-primary]/40 [&_blockquote]:pl-4 [&_blockquote]:text-[--color-muted-foreground] [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[--color-border] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_td]:border [&_td]:border-[--color-border] [&_td]:px-3 [&_td]:py-2 [&_td]:text-sm [&_pre]:my-3 [&_hr]:border-[--color-border] [&_p]:my-2">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{content}</ReactMarkdown>
     </div>
   );
 }
