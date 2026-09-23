@@ -1,5 +1,6 @@
 import type { Skill } from "@/store/skillStore";
 import { withSuggestedCategory } from "@/lib/categorize";
+import { localSkillId } from "@/lib/localSkillId";
 
 export interface LocalLoadResult {
   skills: Skill[];
@@ -8,7 +9,7 @@ export interface LocalLoadResult {
 }
 
 interface PickedSkill {
-  id: string;
+  path: string;
   content: string;
 }
 
@@ -57,12 +58,13 @@ function buildResult(picked: PickedSkill[], errors: string[]): LocalLoadResult {
   for (const p of picked) {
     const parsed = parseFrontMatter(p.content);
     if (!parsed) {
-      errors.push(p.id + ": no valid front matter");
+      errors.push(p.path + ": no valid front matter");
       continue;
     }
+    const id = localSkillId(p.path);
     const skill: Skill = {
-      id: p.id,
-      name: asStr(parsed.data.name) ?? p.id,
+      id,
+      name: asStr(parsed.data.name) ?? p.path,
       description: asStr(parsed.data.description) ?? "",
       category: asStr(parsed.data.category),
       risk: asStr(parsed.data.risk),
@@ -73,14 +75,14 @@ function buildResult(picked: PickedSkill[], errors: string[]): LocalLoadResult {
       icon: asStr(parsed.data.icon),
     };
     skills.push(withSuggestedCategory(skill));
-    contents[p.id] = parsed.body;
+    contents[id] = parsed.body;
   }
   return { skills, contents, errors };
 }
 
 async function walkDirectory(
   handle: FileSystemDirectoryHandle,
-  id: string,
+  relativePath: string,
   picked: PickedSkill[],
   errors: string[],
 ): Promise<void> {
@@ -88,12 +90,12 @@ async function walkDirectory(
     if (entry.kind === "file" && name.toLowerCase() === "skill.md") {
       try {
         const file = await (entry as FileSystemFileHandle).getFile();
-        picked.push({ id, content: await file.text() });
+        picked.push({ path: `${relativePath}/${name}`, content: await file.text() });
       } catch (e) {
         errors.push(String(e));
       }
     } else if (entry.kind === "directory") {
-      await walkDirectory(entry as FileSystemDirectoryHandle, name, picked, errors);
+      await walkDirectory(entry as FileSystemDirectoryHandle, `${relativePath}/${name}`, picked, errors);
     }
   }
 }
@@ -129,8 +131,7 @@ function pickWithWebkitDirectory(): Promise<LocalLoadResult> {
         const parts = rel.split("/");
         const base = parts[parts.length - 1] ?? "";
         if (base.toLowerCase() !== "skill.md") continue;
-        const id = parts.length >= 2 ? parts[parts.length - 2] : file.name;
-        picked.push({ id, content: await file.text() });
+        picked.push({ path: rel, content: await file.text() });
       }
       resolve(buildResult(picked, errors));
     };

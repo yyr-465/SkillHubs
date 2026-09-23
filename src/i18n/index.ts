@@ -1,6 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import zh from "./zh.json";
 import en from "./en.json";
+import { syncDocumentLanguage } from "./syncDocumentLanguage";
 
 // ── Translation dictionary ──────────────────────────────────────
 
@@ -19,6 +20,7 @@ export function getCurrentLang(): LangCode {
 
 export function setCurrentLang(lang: LangCode) {
   currentLang = lang;
+  syncDocumentLanguage(lang);
   listeners.forEach((fn) => fn());
 }
 

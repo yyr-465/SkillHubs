@@ -1,5 +1,14 @@
 > 工作区说明：本仓库曾随开发环境迁移（2026-08-15），现于独立工作区维护；git 历史与远程 origin 连续、无分叉。本文档内路径均为相对/通用表述，不含本机盘符。
 
+# Web 本地目录最终验收（2026-09-23）
+
+- 本轮在 `src/lib/localSkills.ts` 由叶目录 ID 改为相对路径编码 ID，规避不同目录同名 Skill 冲突；相同相对路径每次计算稳定。Catalog 使用原静态 ID，不受本地 ID 规则影响。
+- `src/lib/webApi.ts` 增加旧目录名 ID 的收藏/最近访问兼容迁移：仅当旧目录名唯一对应一个已载入的本地 Skill 时补充新 ID；重复目录名旧记录无法安全判定归属，保持原样。
+- 用户于 2026-09-23 完成真实 Edge 人工验收：Windows 原生目录选择器正常加载 `qa/fixtures/local-skill-folder`；页面显示 5 个有效 Skill；Original README 正常显示；重新加载本地目录时 Network 没有新增 HTTP 请求；点击 `Back to sample catalog` 后恢复默认 8 个 Skill。基于用户现场确认，本地目录加载人工验收通过。
+- fixture 文件经凭据特征扫描未发现 API key、password、secret、token 或私钥标记；均为惰性 Markdown 示例。
+- 自动检查：`test:readme`、`test:catalog`、`tests/web-regressions.test.ts`、lint、`build:web` 与 `git diff --check` 均退出成功。lint 有 19 条既有警告；build 有既有大 chunk 提示。Catalog 生成产物为 8 项，ID 未改变。
+- 用户现场确认覆盖了选择器、5 个有效 Skill、Original README、重载时无新增 HTTP 请求和恢复 8 个 Catalog Skill。既有自动化结果覆盖无效文件跳过、嵌套路径 ID 稳定及同名路径隔离；此次未另行在 UI 中逐项记录两个同名 Skill 的 ID/README 标记，也未得到独立的跳过数页面截图。对外发布前仍需按常规 review 检查最终待提交 diff 和目标构建产物；本轮不 commit、push 或部署。
+
 # Web 版构建与发布状态（2026-09-22）
 
 Web 是当前主要公开产品，GitHub Pages 公网地址：

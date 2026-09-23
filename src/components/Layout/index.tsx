@@ -25,7 +25,7 @@ function Sidebar() {
   useEffect(() => { fetchConflictCount(); }, [fetchConflictCount]);
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col border-r border-[--color-border] bg-[--color-background]">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-40 flex-col border-r border-[--color-border] bg-[--color-background] sm:w-56">
       <div className="flex h-14 items-center gap-2 px-4 border-b border-[--color-border]">
         <BookOpen className="h-5 w-5 text-[--color-primary]" />
         <span className="font-semibold text-sm tracking-tight">{t("app.name")}</span>
@@ -62,7 +62,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[--color-background]">
       <Sidebar />
-      <main className="ml-56 p-6">{children}</main>
+      <main className="ml-40 p-4 sm:ml-56 sm:p-6">{children}</main>
     </div>
   );
 }

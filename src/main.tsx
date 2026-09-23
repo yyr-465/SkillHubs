@@ -3,8 +3,14 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, HashRouter } from "react-router-dom";
 import App from "./App";
 import { IS_TAURI } from "@/lib/runtime";
+import { getInitialWebLanguage } from "@/lib/webApi";
+import { setCurrentLang } from "@/i18n";
 import { configuredTranslationApiOrigin } from "@/lib/readmeTranslationApi";
 import "./index.css";
+
+if (!IS_TAURI) {
+  setCurrentLang(getInitialWebLanguage());
+}
 
 /**
  * Web-only security baseline.

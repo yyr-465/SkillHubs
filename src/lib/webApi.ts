@@ -88,9 +88,47 @@ export function setLocalSkills(
   skills: Skill[] | null,
   contents: Record<string, string> = {},
 ): void {
+  if (skills) migrateLegacyLocalRecords(skills);
   localOverride = skills;
   localContents = contents;
   contentCache.clear();
+}
+
+/** Preserve old folder-name keyed records when that name identifies one local Skill. */
+function migrateLegacyLocalRecords(skills: Skill[]): void {
+  const targets = new Map<string, string[]>();
+  for (const skill of skills) {
+    if (!skill.id.startsWith("_local_")) continue;
+    try {
+      const encoded = skill.id.slice("_local_".length).replaceAll("-", "+").replaceAll("_", "/");
+      const path = new TextDecoder().decode(Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0)));
+      const parts = path.split("/");
+      const legacyId = parts.at(-2);
+      if (legacyId) targets.set(legacyId, [...(targets.get(legacyId) ?? []), skill.id]);
+    } catch {
+      // Unknown local ID encodings are left untouched.
+    }
+  }
+
+  const uniqueTargets = new Map(
+    [...targets].filter(([, ids]) => ids.length === 1).map(([legacyId, ids]) => [legacyId, ids[0]]),
+  );
+  if (uniqueTargets.size === 0) return;
+
+  const favorites = new Set(favoriteIds());
+  for (const [legacyId, id] of uniqueTargets) {
+    if (favorites.has(legacyId)) favorites.add(id);
+  }
+  writeJson(FAVORITES_KEY, [...favorites]);
+
+  const recent = recentEntries();
+  const migrated = recent
+    .filter((entry) => uniqueTargets.has(entry.id))
+    .map((entry) => ({ ...entry, id: uniqueTargets.get(entry.id)! }));
+  if (migrated.length > 0) {
+    const byId = new Map([...recent, ...migrated].map((entry) => [entry.id, entry]));
+    writeJson(RECENT_KEY, [...byId.values()].sort((a, b) => b.viewed_at - a.viewed_at).slice(0, 30));
+  }
 }
 
 export function hasLocalSkills(): boolean {
@@ -166,6 +204,10 @@ function loadWebSettings(): AppSettings {
     minimize_to_tray: false,
     skill_directory: null,
   };
+}
+
+export function getInitialWebLanguage(): "zh" | "en" {
+  return loadWebSettings().language === "zh" ? "zh" : "en";
 }
 
 function saveWebSettings(settings: AppSettings): AppSettings {

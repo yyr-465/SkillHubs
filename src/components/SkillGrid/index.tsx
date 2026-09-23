@@ -7,9 +7,8 @@ interface SkillGridProps {
 }
 
 /**
- * Simple, non-virtualised grid for the Web build: exactly 4 columns with a
- * fixed, uniform gap (virtualisation is unnecessary for the small catalogue
- * and produced uneven row spacing).
+ * Simple, non-virtualised grid for the Web build with responsive columns and
+ * a uniform gap (virtualisation is unnecessary for the small catalogue).
  */
 export default function SkillGrid({ skills, viewMode }: SkillGridProps) {
   if (viewMode === "list") {
@@ -20,7 +19,7 @@ export default function SkillGrid({ skills, viewMode }: SkillGridProps) {
     );
   }
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {skills.map((skill) => (<SkillCard key={skill.id} skill={skill} />))}
     </div>
   );

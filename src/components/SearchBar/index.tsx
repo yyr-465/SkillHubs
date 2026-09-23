@@ -120,7 +120,7 @@ export default function SearchBar() {
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         placeholder={t("skillList.searchPlaceholder")}
-        className="w-64 rounded-md border border-[--color-border] bg-[--color-card] py-2 pl-9 pr-3 text-sm text-[--color-foreground] outline-none transition-colors placeholder:text-[--color-muted-foreground] focus:border-[--color-primary]"
+        className="w-full max-w-64 rounded-md border border-[--color-border] bg-[--color-card] py-2 pl-9 pr-3 text-sm text-[--color-foreground] outline-none transition-colors placeholder:text-[--color-muted-foreground] focus:border-[--color-primary]"
       />
 
       {showDropdown && (hasSuggestions || hasHistory) && (
