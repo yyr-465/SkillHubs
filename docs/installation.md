@@ -1,13 +1,13 @@
-# Installation
+# Historical Windows installation
 
-SkillHub is a Windows x64 desktop application. This guide covers installing,
-updating, and uninstalling it, and explains where your data lives.
+This guide covers installing, updating, and uninstalling the historical
+Windows x64 desktop test builds. [SkillHub Web](https://yyr-465.github.io/SkillHubs/)
+is the final public edition.
 
-> **Release status:** SkillHub is pre-1.0 software. Installers on the
-> [Releases](https://github.com/yyr-465/SkillHubs/releases) page are
-> updater-signed but are not yet Authenticode-signed. Treat them as test builds
-> until the production code-signing gate is complete. See the
-> [Code signing policy](../CODE_SIGNING_POLICY.md).
+> The [historical test installers](https://github.com/yyr-465/SkillHubs/releases)
+> use Tauri updater signatures and predate Windows Authenticode signing.
+> The [Code Signing Policy](../CODE_SIGNING_POLICY.md) documents the
+> production signing requirements.
 
 ## System requirements
 
@@ -17,13 +17,13 @@ updating, and uninstalling it, and explains where your data lives.
 ## Install
 
 1. Open the [Releases](https://github.com/yyr-465/SkillHubs/releases) page.
-2. Download the installer for the latest version. Two formats are provided:
+2. Select the historical version you want to inspect. Its installers come in two formats.
    - **NSIS installer** (`.exe`) — recommended for most users.
    - **MSI installer** (`.msi`) — for managed deployment.
 3. Run the installer and follow the on-screen steps.
 
-Pre-release builds are labeled **QA** and are visibly distinguishable from
-production builds. Do not distribute unsigned QA builds as a public release.
+The local QA packaging command labels its builds **QA**. They are intended
+for local testing.
 
 ## First launch
 

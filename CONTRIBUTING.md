@@ -4,18 +4,18 @@ Thanks for considering a contribution! SkillHub is a small open-source project, 
 
 ## Development setup
 
-See the [Development](README.md#development) section of the README for prerequisites. In short:
+See the [Development section](README.md#development) for the Web prerequisites.
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm exec tauri dev
+pnpm run dev
 ```
 
 ## What to work on
 
 - Check [GitHub Issues](https://github.com/yyr-465/SkillHubs/issues) for open bugs and feature requests.
-- The public roadmap lives in `可公开发布的正式版剩余路线.md` (Chinese); `MEMORY.md` records completed phases and known risks.
-- The Web edition's scope, data source, and update flow are documented in [WEB.md](WEB.md).
+- The current public edition's scope, data source, and update flow are documented in [WEB.md](WEB.md).
+- The [Windows 1.0 release roadmap](可公开发布的正式版剩余路线.md) is a historical plan. [Project memory](MEMORY.md) records prior decisions and verification.
 
 ## Project layout
 
@@ -26,9 +26,9 @@ pnpm exec tauri dev
 - `scripts/` — catalogue generation, local preview, and deploy helpers.
 - `qa/` — phase QA reports and evidence.
 
-## Required checks
+## Web checks
 
-Before committing, run and pass all of the following:
+Run these checks before committing Web changes.
 
 ```powershell
 pnpm run lint
@@ -36,14 +36,22 @@ pnpm run test:readme
 pnpm run test:catalog
 pnpm run test:worker
 pnpm run typecheck:worker
-pnpm run build
+node --test tests/web-regressions.test.ts
 pnpm run build:web
+git diff --check
+```
+
+Pages checks that regenerated `public/catalog/` matches what is committed. Include the generated snapshot when Catalog sources change. Bug fixes should include a focused regression test when practical.
+
+## Desktop checks
+
+Desktop development requires Rust and the Windows build tools for Tauri. Use `pnpm exec tauri dev` to run the desktop app. For desktop changes, run the Web checks and the following commands.
+
+```powershell
+pnpm run build
 cargo build --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
-
-Bug fixes should include a focused regression test when practical.
-The ordinary build retains `tsc -b && vite build`; the Web build regenerates the Catalog first. Pages also checks that regenerated `public/catalog/` matches what is committed.
 
 ## Commit guidelines
 

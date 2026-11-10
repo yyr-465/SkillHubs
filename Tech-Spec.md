@@ -1,3 +1,10 @@
+# Phase 14 — Final public Web release (2026-11-10)
+
+- The final public edition is SkillHub Web on GitHub Pages. The former Windows 1.0 release plan and installer documentation serve as historical references.
+- The release candidate contains reviewed Web documentation and project records. Make an application change only for a reproducible blocker in the Web acceptance flows. Keep the existing Pages and desktop signing gates in force.
+- Before publishing, run the Web checks in `CONTRIBUTING.md`, confirm that the generated Catalog still matches `public/catalog/`, and review each staged path. Keep local QA imports, machine data, backups, and build output out of the commit.
+- Publish a fast-forward update to `origin/main`. Match the pushed SHA to a successful Pages build and deploy. In a browser, verify the eight samples, search, original README with code blocks, and a sample detail URL after reload. Use `qa/fixtures/local-skill-folder` to check five valid entries, one skipped file, separate content for duplicate names, and a return to the eight samples.
+
 # Phase 8.3b Remediation Technical Specification
 
 ## Phase 9 Security Closure Addendum (2026-07-19)

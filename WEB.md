@@ -1,9 +1,6 @@
 # SkillHub Web
 
-A free, read-only web edition of SkillHub and the primary public product. Its default Catalog contains eight Skills. Users can browse, search, and read
-Skill details — including safety notes — with English/Chinese language support
-and light/dark themes. It runs on free static hosting and shares the desktop
-app's frontend through a small data-layer abstraction.
+[Open SkillHub Web](https://yyr-465.github.io/SkillHubs/), the final public edition of SkillHub. The default Catalog contains eight sample Skills. Browse, search, and read Skill details, including safety notes, in English or Chinese UI with light and dark themes. The Windows desktop app is available as a [historical test release](README.md#desktop-archive).
 
 ## Scope
 
@@ -13,10 +10,10 @@ The Web build intentionally exposes only what is safe to publish:
 - Filter by category, risk, and source; sort and switch grid/list view
 - Read Skill details (Markdown) with syntax highlighting
 - See risk badges and a read-only safety note
-- Share a Skill via a copyable URL
+- Share sample Skill details through a copyable URL that works after a refresh
 - Favourites, search history, and recently viewed (local to the browser)
 - English / Chinese and light / dark theme (persisted in `localStorage`)
-- User-initiated local folder selection; the browser recursively reads `SKILL.md` files
+- Read `SKILL.md` files from a local folder you select
 
 The Web build does not automatically scan the desktop Skill directory or persist scans in SQLite. It does not provide dependency checks, process execution, import/export, backup, AI categorization, or tags. Those remain desktop-only and their UI is hidden in the Web build. Execution, scan, categorize, and backup commands fail closed in the Web data layer.
 
@@ -56,23 +53,24 @@ publishes execution declarations.
 
 The generator rejects empty sources, invalid folder IDs, missing or malformed `SKILL.md` files, and Skills without a name, description, or Markdown body. It removes stale generated Markdown and verifies the index count and IDs. Pages regenerates the Catalog and fails if `public/catalog/` differs from the committed snapshot.
 
-When a user chooses a local folder, the browser reads authorized `SKILL.md` files recursively through the directory picker or file input. It parses them in memory and temporarily replaces the default Catalog; loading a folder does not automatically upload its contents. The local folder selection is not a desktop SQLite scan.
+## Local folders and browser storage
+
+Choose **Load local Skill folder** and select the folder in the browser's directory picker or folder input. The browser reads `SKILL.md` files recursively, reports skipped files, and keeps the parsed contents in memory. Local details are available while that folder is loaded. Reload the page or select **Back to sample catalog** to clear the local Catalog.
+
+Browser storage can retain favorites, recent views, search history, language, theme, and view mode. A local detail link includes an encoded relative path with the selected folder name. The link depends on the local folder being loaded in that browser session. See the [Privacy Policy](PRIVACY.md).
+
+GitHub Pages serves the site and the sample Catalog. Folder loading reads selected files in the browser without uploading their contents. Remote HTTPS icons and README images may send requests to their hosts when rendered, including for local Skills.
 
 ## Live site
 
-The Web edition is published at **https://yyr-465.github.io/SkillHubs/** through GitHub Pages. Pushes to `main` run `.github/workflows/pages.yml` when Pages is configured to use GitHub Actions. The older `scripts/deploy-gh-pages.ps1` is a manual fallback that publishes a prebuilt `dist/` to `gh-pages`.
+[GitHub Pages](https://yyr-465.github.io/SkillHubs/) hosts the Web edition. Pushes to `main` trigger the [Pages workflow](.github/workflows/pages.yml). The Pages source is GitHub Actions.
 
 ## Build & deploy
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm run lint
-pnpm run test:readme
-pnpm run test:catalog
-pnpm run test:worker
-pnpm run typecheck:worker
 pnpm run build:web  # regenerates public/catalog and emits ./dist
-pnpm preview        # local smoke test (recommended)
+pnpm preview
 ```
 
 Local preview options:
@@ -84,32 +82,13 @@ Local preview options:
   `text/plain`, which browsers reject for `<script type="module">` and render a
   blank page.
 
-`vite.config.ts` uses a relative `base`, so `dist/` deploys unchanged to any
-static host, including sub-path hosting:
-
-- **GitHub Pages** — push `dist/` to a `gh-pages` branch or use a Pages action
-- **Cloudflare Pages** — build command `pnpm run build:web`, output `dist`
-- **Vercel** — framework "Vite", build `pnpm run build:web`, output `dist`
-
-### GitHub Pages (step-by-step)
-
-Manual fallback (publishes the already-built `dist/` without committing source):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\deploy-gh-pages.ps1
-```
-
-For the primary automatic workflow, set Pages Source to **GitHub Actions**. The workflow installs frozen dependencies, runs lint, README and Worker tests, Worker typecheck, Web build, and a generated Catalog diff check before upload and deploy. If using the manual fallback instead, configure Pages to deploy the `gh-pages` branch and rebuild `dist/` first.
-
-No API keys, backend, or custom domain are required.
+The relative Vite base lets `dist/` run under the `/SkillHubs/` project path. Pages installs from the frozen pnpm lockfile, then runs lint, README, Catalog and Worker tests, Worker type checking, the Web build, and the generated Catalog check before deploying `dist/`. Run the [local Web checks](CONTRIBUTING.md#web-checks) before pushing.
 
 ## Known limitations
 
-- **README translation is inactive until configured**: the Web edition shows
-  the Original README without a translation button when
-  `VITE_TRANSLATION_API_URL` is unset or invalid. The translation client,
-  IndexedDB cache, and Worker implementation remain in the repository for
-  future activation. No model provider or translation Worker is deployed yet.
+- **Original README** is available on the public site. With
+  `VITE_TRANSLATION_API_URL` unset, the translation action is hidden. The
+  translation client, IndexedDB cache, and Worker source are retained for reference.
 - **Local loading reads SKILL.md files**: "Load local Skill folder"
   recursively reads files named `SKILL.md` (case-insensitive), displays valid
   Skills, and reports skipped invalid files. It does not read
@@ -120,8 +99,7 @@ No API keys, backend, or custom domain are required.
   `category:` front matter, with an offline keyword-rule fallback
   (`src/lib/categorize.ts`) for Skills that have none. The desktop app's
   DeepSeek-based AI categorization writes to its local database and never
-  reaches the static Web build, which cannot hold an API key without leaking
-  it. This is an intentional scope boundary, not a bug.
+  reaches the static Web build.
 
 ## Security baseline
 
@@ -140,10 +118,6 @@ No API keys, backend, or custom domain are required.
 - **Local files / execution** — only user-selected local folders are read in
   the browser; the Web data layer cannot execute processes.
 
-## Keeping the desktop app working
+## Desktop archive
 
-The desktop app is unchanged functionally: it keeps the Tauri IPC bridge, the
-full Dashboard/Settings/Error Log/Conflicts routes, scanning, execution, tags,
-import/export, backup, and updater. The Web layer is additive. Desktop
-Required Checks (`tsc`, `build`, `lint`, `cargo build`, `cargo test`) remain
-part of the release gate.
+The Tauri runtime and desktop test builds are documented in the [desktop archive](README.md#desktop-archive). See the [desktop checks](CONTRIBUTING.md#desktop-checks) for changes to that runtime.

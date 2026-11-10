@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-09-22
+Last updated: 2026-11-10
 
 This policy describes the data and network behavior of SkillHub Web and the Windows desktop application.
 
@@ -12,13 +12,13 @@ Optional features can communicate with third-party services as described below.
 
 ## Web edition
 
-The public Web site loads its default eight-Skill Catalog from GitHub Pages. A user may choose a local Skill folder through the browser's directory picker or file input. The browser reads `SKILL.md` files recursively from that authorized selection and parses them in memory. SkillHub Web does not automatically scan desktop Skill directories, store a SQLite scan, or upload the entire selected folder when it is loaded. Local Skill content is kept in memory for the current page session.
+The public Web site loads its default eight-Skill Catalog from GitHub Pages. When a user selects a local Skill folder through the browser's directory picker or folder input, the browser recursively reads and parses `SKILL.md` files in memory without uploading their contents. The local Catalog and its README text last until the page reloads or the user returns to the sample Catalog.
 
-Favorites, search history, recently viewed Skills, language and theme settings, and view mode are stored in the browser's `localStorage`. Clearing site data removes these saved browser preferences and history. Browser storage availability and retention depend on the browser.
+Favorites, search history, recently viewed Skill IDs, language and theme settings, and view mode are stored in the browser's `localStorage`. Local Skill IDs, which can appear in detail links and saved favorites or recent views, encode the relative path including the selected folder name. Clearing site data removes these saved preferences and records. Storage availability and retention depend on the browser.
 
 README AI translation code and an IndexedDB cache exist, but translation is not enabled on the public Web site because no real translation backend is configured. The public site does not show the translation action. If a backend is configured in the future, a request will only be made after the user clicks Translate to Chinese; for a local Skill, the interface also asks for confirmation before sending the current README content. The request sends that README content, not the selected folder or its other files. A successful translation can be cached in browser IndexedDB; local translation consent can be remembered in `localStorage`.
 
-As with any hosted site, the hosting provider can receive ordinary connection data when the browser loads the page and static Catalog. Skill icons may also load from external URLs if a Skill specifies one.
+GitHub Pages can receive ordinary connection data when the browser loads the site and static Catalog. Displaying a Skill can also load its remote HTTPS icon or a README image over HTTPS, including for a locally loaded Skill. Those image hosts can receive ordinary connection data such as IP addresses and request headers.
 
 ## Desktop locally stored data
 
