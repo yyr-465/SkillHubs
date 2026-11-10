@@ -20,7 +20,7 @@ External contributions require maintainer review before merge. Production signin
 
 ## Privacy
 
-The [Privacy Policy](PRIVACY.md) documents local data storage and every current network interaction, including optional DeepSeek categorization, GitHub-hosted updates, and remote skill icons.
+The [Privacy Policy](../../PRIVACY.md) documents local data storage and every current network interaction, including optional DeepSeek categorization, GitHub-hosted updates, and remote skill icons.
 
 ## Source and build provenance
 

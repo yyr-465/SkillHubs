@@ -1,6 +1,6 @@
 # SkillHub 可公开发布的正式版剩余路线
 
-> **历史计划（2026-11-10）**。下文记录原 Windows 桌面 1.0.0 发行路线。当前最终公开版本为 [SkillHub Web](https://yyr-465.github.io/SkillHubs/)，桌面安装包作为历史测试发行保留。当前 Web 验收口径见 [Tech-Spec.md](Tech-Spec.md)。
+> **历史计划（2026-11-10）**。下文记录原 Windows 桌面 1.0.0 发行路线。当前最终公开版本为 [SkillHub Web](https://yyr-465.github.io/SkillHubs/)，桌面安装包作为历史测试发行保留。当前 Web 验收口径见 [技术规格](../tech-spec.md)。
 
 > 更新日期：2026-07-30  
 > 目标平台：Windows x64  

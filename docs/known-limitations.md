@@ -8,7 +8,7 @@ and their current disposition. It is updated as the project progresses.
 - **Installers are not yet Authenticode-signed.** Existing public installers
   are updater-signed but not publisher-signed. The production signing and
   release gate must complete before installers are presented as a trusted
-  public release (see [Code signing policy](../CODE_SIGNING_POLICY.md)).
+  public release (see [Code signing policy](desktop/code-signing-policy.md)).
   Until then, treat installers as test builds.
 
 ## Desktop application
@@ -48,7 +48,7 @@ and their current disposition. It is updated as the project progresses.
 
 ## Web edition
 
-The Web edition is read-only. Known constraints (see [WEB.md](../WEB.md)):
+The Web edition is read-only. Known constraints (see the [Web guide](web.md)):
 
 - It serves a static catalogue of example Skills; local scanning, dependency
   checks, AI categorization, and execution are desktop-only.

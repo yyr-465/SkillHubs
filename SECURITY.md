@@ -8,7 +8,7 @@ SkillHub is pre-1.0 software. Only the latest published release receives
 security fixes. Installers on the [Releases](https://github.com/yyr-465/SkillHubs/releases)
 page are updater-signed but are not yet Authenticode-signed; treat them as test
 builds until the production code-signing gate is complete (see
-[Code signing policy](CODE_SIGNING_POLICY.md)).
+[Code signing policy](docs/desktop/code-signing-policy.md)).
 
 ## Reporting a vulnerability
 

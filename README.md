@@ -10,18 +10,18 @@
 
 Selected file contents are held in memory for the current page session. Preferences, favorites, search history, and recent views can persist in browser storage. Remote HTTPS Skill icons and README images may be requested from their hosts. README translation is disabled on the public site.
 
-See the [Web guide](WEB.md) and [Privacy Policy](PRIVACY.md) for details.
+See the [Web guide](docs/web.md) and [Privacy Policy](PRIVACY.md) for details.
 
 ## Desktop archive
 
-The [Windows x64 releases](https://github.com/yyr-465/SkillHubs/releases) are historical test builds. The Tauri/Rust source, Windows installers, and desktop documentation remain available for reference. The [Code Signing Policy](CODE_SIGNING_POLICY.md) documents the production signing requirements for desktop builds.
+The [Windows x64 releases](https://github.com/yyr-465/SkillHubs/releases) are historical test builds. The Tauri/Rust source, Windows installers, and desktop documentation remain available for reference. The [Code Signing Policy](docs/desktop/code-signing-policy.md) documents the production signing requirements for desktop builds.
 
 - [Installation and updates](docs/installation.md)
 - [Getting started](docs/getting-started.md)
 - [Safe execution](docs/safe-execution.md)
-- [Backup and restore](docs/backup-restore.md) and [data directory reference](DATA_DIRECTORY.md)
+- [Backup and restore](docs/backup-restore.md) and [data directory reference](docs/desktop/data-directory.md)
 - [Known desktop limitations](docs/known-limitations.md)
-- [Former Windows 1.0 release plan](可公开发布的正式版剩余路线.md)
+- [Former Windows 1.0 release plan](docs/desktop/windows-release-roadmap.md)
 
 ## Development
 

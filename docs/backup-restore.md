@@ -67,4 +67,4 @@ outside the install directory, so uninstall does not remove it.
   can continue with a fresh in-memory state rather than silently losing data.
 
 The formal backup format and full data-directory reference are documented in
-[Data directory & backup reference](../DATA_DIRECTORY.md).
+[Data directory & backup reference](desktop/data-directory.md).

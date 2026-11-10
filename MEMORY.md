@@ -2,9 +2,10 @@
 
 # Phase 14 — Web 公开版收尾（2026-11-10）
 
-- [SkillHub Web](https://yyr-465.github.io/SkillHubs/) 是当前最终公开版本。Windows 桌面安装包、文档和源码作为历史测试发行保留，原 1.0.0 路线见 [历史计划](可公开发布的正式版剩余路线.md)，桌面生产签名门禁仍有效。
+- [SkillHub Web](https://yyr-465.github.io/SkillHubs/) 是当前最终公开版本。Windows 桌面安装包、文档和源码作为历史测试发行保留，原 1.0.0 路线见 [历史计划](docs/desktop/windows-release-roadmap.md)，桌面生产签名门禁仍有效。
 - Web 发布使用 `main` 上的 Pages 工作流。默认 8 个样例来自静态 Catalog；本地目录内容仅在当前页面会话中读取和使用。浏览器可保留偏好、搜索和访问记录。远程 HTTPS 图标及 README 图片可能向图片托管方发出请求。
-- 公开站点直接展示 Original README，翻译服务当前关闭。Web 验收和提交范围见 [Tech-Spec.md](Tech-Spec.md)。
+- 公开站点直接展示 Original README，翻译服务当前关闭。Web 验收和提交范围见 [技术规格](docs/tech-spec.md)。
+- Web 指南和技术规格集中在 `docs/`，桌面签名、数据目录和历史计划集中在 `docs/desktop/`。早期桌面截图留存在本地工作区和 Git 历史。
 
 # Web 本地目录最终验收（2026-09-23）
 

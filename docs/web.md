@@ -1,6 +1,6 @@
 # SkillHub Web
 
-[Open SkillHub Web](https://yyr-465.github.io/SkillHubs/), the final public edition of SkillHub. The default Catalog contains eight sample Skills. Browse, search, and read Skill details, including safety notes, in English or Chinese UI with light and dark themes. The Windows desktop app is available as a [historical test release](README.md#desktop-archive).
+[Open SkillHub Web](https://yyr-465.github.io/SkillHubs/), the final public edition of SkillHub. The default Catalog contains eight sample Skills. Browse, search, and read Skill details, including safety notes, in English or Chinese UI with light and dark themes. The Windows desktop app is available as a [historical test release](../README.md#desktop-archive).
 
 ## Scope
 
@@ -57,13 +57,13 @@ The generator rejects empty sources, invalid folder IDs, missing or malformed `S
 
 Choose **Load local Skill folder** and select the folder in the browser's directory picker or folder input. The browser reads `SKILL.md` files recursively, reports skipped files, and keeps the parsed contents in memory. Local details are available while that folder is loaded. Reload the page or select **Back to sample catalog** to clear the local Catalog.
 
-Browser storage can retain favorites, recent views, search history, language, theme, and view mode. A local detail link includes an encoded relative path with the selected folder name. The link depends on the local folder being loaded in that browser session. See the [Privacy Policy](PRIVACY.md).
+Browser storage can retain favorites, recent views, search history, language, theme, and view mode. A local detail link includes an encoded relative path with the selected folder name. The link depends on the local folder being loaded in that browser session. See the [Privacy Policy](../PRIVACY.md).
 
 GitHub Pages serves the site and the sample Catalog. Folder loading reads selected files in the browser without uploading their contents. Remote HTTPS icons and README images may send requests to their hosts when rendered, including for local Skills.
 
 ## Live site
 
-[GitHub Pages](https://yyr-465.github.io/SkillHubs/) hosts the Web edition. Pushes to `main` trigger the [Pages workflow](.github/workflows/pages.yml). The Pages source is GitHub Actions.
+[GitHub Pages](https://yyr-465.github.io/SkillHubs/) hosts the Web edition. Pushes to `main` trigger the [Pages workflow](../.github/workflows/pages.yml). The Pages source is GitHub Actions.
 
 ## Build & deploy
 
@@ -82,7 +82,7 @@ Local preview options:
   `text/plain`, which browsers reject for `<script type="module">` and render a
   blank page.
 
-The relative Vite base lets `dist/` run under the `/SkillHubs/` project path. Pages installs from the frozen pnpm lockfile, then runs lint, README, Catalog and Worker tests, Worker type checking, the Web build, and the generated Catalog check before deploying `dist/`. Run the [local Web checks](CONTRIBUTING.md#web-checks) before pushing.
+The relative Vite base lets `dist/` run under the `/SkillHubs/` project path. Pages installs from the frozen pnpm lockfile, then runs lint, README, Catalog and Worker tests, Worker type checking, the Web build, and the generated Catalog check before deploying `dist/`. Run the [local Web checks](../CONTRIBUTING.md#web-checks) before pushing.
 
 ## Known limitations
 
@@ -120,4 +120,4 @@ The relative Vite base lets `dist/` run under the `/SkillHubs/` project path. Pa
 
 ## Desktop archive
 
-The Tauri runtime and desktop test builds are documented in the [desktop archive](README.md#desktop-archive). See the [desktop checks](CONTRIBUTING.md#desktop-checks) for changes to that runtime.
+The Tauri runtime and desktop test builds are documented in the [desktop archive](../README.md#desktop-archive). See the [desktop checks](../CONTRIBUTING.md#desktop-checks) for changes to that runtime.

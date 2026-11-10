@@ -6,7 +6,7 @@ is the final public edition.
 
 > The [historical test installers](https://github.com/yyr-465/SkillHubs/releases)
 > use Tauri updater signatures and predate Windows Authenticode signing.
-> The [Code Signing Policy](../CODE_SIGNING_POLICY.md) documents the
+> The [Code Signing Policy](desktop/code-signing-policy.md) documents the
 > production signing requirements.
 
 ## System requirements
@@ -64,7 +64,7 @@ theme, skill directory, and the optional DeepSeek API key). The application
 shows the exact path under **Settings → Backup & Restore → Data directory**.
 
 The full data-location and migration reference is in
-[Data directory & backup reference](../DATA_DIRECTORY.md).
+[Data directory & backup reference](desktop/data-directory.md).
 
 ## Installer contents (production release)
 

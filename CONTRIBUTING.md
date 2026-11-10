@@ -14,8 +14,8 @@ pnpm run dev
 ## What to work on
 
 - Check [GitHub Issues](https://github.com/yyr-465/SkillHubs/issues) for open bugs and feature requests.
-- The current public edition's scope, data source, and update flow are documented in [WEB.md](WEB.md).
-- The [Windows 1.0 release roadmap](可公开发布的正式版剩余路线.md) is a historical plan. [Project memory](MEMORY.md) records prior decisions and verification.
+- The [Web guide](docs/web.md) covers the public edition's scope, data source, and update flow.
+- The [Windows 1.0 release roadmap](docs/desktop/windows-release-roadmap.md) is a historical plan. [Project memory](MEMORY.md) records prior decisions and verification.
 
 ## Project layout
 
