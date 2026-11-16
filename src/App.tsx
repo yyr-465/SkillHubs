@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import WebDashboard from "@/pages/WebDashboard";
+import Inventory from "@/pages/Inventory";
 import SkillList from "@/pages/SkillList";
 import SkillDetail from "@/pages/SkillDetail";
 import Settings from "@/pages/Settings";
@@ -24,6 +25,7 @@ function App() {
         <Route path="/" element={IS_TAURI ? <Dashboard /> : <WebDashboard />} />
         <Route path="/skills" element={<SkillList />} />
         <Route path="/skills/:id" element={<SkillDetail />} />
+        {!IS_TAURI && <Route path="/inventory" element={<Inventory />} />}
         {IS_TAURI && <Route path="/settings" element={<Settings />} />}
         {IS_TAURI && <Route path="/error-log" element={<ErrorLog />} />}
         {IS_TAURI && <Route path="/onboarding" element={<Dashboard />} />}

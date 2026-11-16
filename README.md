@@ -35,6 +35,8 @@ pnpm preview
 
 The Web build generates `public/catalog/` from `web-catalog/skills/` before building `dist/`. Commit the regenerated catalog snapshot alongside any catalog source edit. Pushes to `main` trigger the [Pages workflow](.github/workflows/pages.yml), which checks that snapshot before deploying to GitHub Pages.
 
+For the local M1 checkout, see [Scan and review a local inventory](docs/m1-local-skills-inventory.md#scan-and-review).
+
 See [Contributing](CONTRIBUTING.md) for checks and development setup.
 
 ## Support and security

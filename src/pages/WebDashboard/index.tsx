@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, Layers, ShieldCheck, ArrowRight, Clock, Sparkles, ExternalLink } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { BookOpen, Layers, ShieldCheck, ArrowRight, Clock, Sparkles, ExternalLink, FolderSearch } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { useSkillStore } from "@/store/skillStore";
 import CategoryBadge from "@/components/CategoryBadge";
@@ -39,6 +39,13 @@ export default function WebDashboard() {
             {t("web.browseSkills")}
             <ArrowRight className="h-4 w-4" />
           </button>
+          <Link
+            to="/inventory"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <FolderSearch aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t("inventory.open")}
+          </Link>
           <a
             href="https://github.com/yyr-465/SkillHubs"
             target="_blank"

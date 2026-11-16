@@ -1,0 +1,7 @@
+{
+  "extends": "../tsconfig.node.json",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": ["./**/*.ts", "../shared/inventory/**/*.ts", "../scripts/print-inventory-schema.ts"]
+}

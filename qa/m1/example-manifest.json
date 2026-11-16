@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-16T05:00:00.000Z",
+  "roots": [
+    {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "shared",
+      "scope": "user",
+      "status": "partial"
+    },
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "custom",
+      "scope": "custom",
+      "status": "scanned"
+    },
+    {
+      "id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "kind": "cursor",
+      "scope": "project",
+      "status": "missing"
+    }
+  ],
+  "installations": [
+    {
+      "id": "1111111111111111111111111111111111111111111111111111111111111111",
+      "skillMdSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "name": "Synthetic release notes",
+      "description": "Generate project release notes from reviewed changes and check required evidence.",
+      "compatibility": "Requires local changes and review notes.",
+      "locations": [
+        {
+          "rootId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relativePath": "group/release-notes/SKILL.md"
+        },
+        {
+          "rootId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "relativePath": "release-notes/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "2222222222222222222222222222222222222222222222222222222222222222",
+      "skillMdSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "name": "Synthetic release notes",
+      "description": "Generate project release notes from reviewed changes and check required evidence.",
+      "compatibility": "Requires local changes and review notes.",
+      "locations": [
+        {
+          "rootId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "relativePath": "legacy/release-notes/SKILL.md"
+        }
+      ]
+    },
+    {
+      "id": "3333333333333333333333333333333333333333333333333333333333333333",
+      "skillMdSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "name": "版本说明复核",
+      "description": "Ｇｅｎｅｒａｔｅ PROJECT release notes from reviewed changes\nand check required evidence.",
+      "locations": [
+        {
+          "rootId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "relativePath": "版本说明/independent-release-notes-copy-with-a-long-folder-name-for-testing-layout/SKILL.md"
+        }
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "rootId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "code": "invalid_front_matter",
+      "relativePath": "broken/SKILL.md"
+    },
+    {
+      "rootId": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "code": "root_unavailable"
+    }
+  ],
+  "omittedDiagnostics": 0
+}

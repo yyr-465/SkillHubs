@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-11-10
+Last updated: 2026-11-16
 
 This policy describes the data and network behavior of SkillHub Web and the Windows desktop application.
 
@@ -19,6 +19,12 @@ Favorites, search history, recently viewed Skill IDs, language and theme setting
 README AI translation code and an IndexedDB cache exist, but translation is not enabled on the public Web site because no real translation backend is configured. The public site does not show the translation action. If a backend is configured in the future, a request will only be made after the user clicks Translate to Chinese; for a local Skill, the interface also asks for confirmation before sending the current README content. The request sends that README content, not the selected folder or its other files. A successful translation can be cached in browser IndexedDB; local translation consent can be remembered in `localStorage`.
 
 GitHub Pages can receive ordinary connection data when the browser loads the site and static Catalog. Displaying a Skill can also load its remote HTTPS icon or a README image over HTTPS, including for a locally loaded Skill. Those image hosts can receive ordinary connection data such as IP addresses and request headers.
+
+## Local Skills inventory (M1 checkout)
+
+The inventory command reads supported Skills directories and writes a user-selected local JSON file. It exports names, descriptions, declared compatibility, relative paths, scan diagnostics, and hashes. The scanner omits Markdown bodies and keeps absolute root paths in the local console only. Author-supplied metadata and relative paths can be private, so review the export before sharing it.
+
+The separate Web inventory page reads a selected inventory file in memory. Import, review, and clear do not send inventory data, fetch imported URLs, request translation, or store the inventory in browser storage. Clearing the inventory, leaving the page, or reloading discards the Web copy; the exported JSON file remains on disk.
 
 ## Desktop locally stored data
 
